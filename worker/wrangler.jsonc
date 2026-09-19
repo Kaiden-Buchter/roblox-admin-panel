@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "roblox-admin-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-19",
+
+  "vars": {
+    "ADMIN_USERNAME": "change-me",
+    "ADMIN_PASSWORD": "change-me",
+    "CORS_ORIGIN": "https://detailingzone.org"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "roblox-admin",
+      "database_id": "e4da9449-00f4-4775-b8ba-d942067cf283"
+    }
+  ]
+}

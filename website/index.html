@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Roblox Admin Panel</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="shell">
+        <aside>
+            <div class="brand">R<span>•</span>ADMIN</div>
+            <nav><button data-view="dashboard">Dashboard</button><button data-view="active">Active
+                    Players</button><button data-view="players">Players</button><button
+                    data-view="servers">Servers</button><button data-view="bans">Bans</button><button
+                    data-view="audit">Audit Logs</button></nav><button id="logout" class="ghost">Log out</button>
+        </aside>
+        <main>
+            <header>
+                <div>
+                    <p class="eyebrow">GAME OPERATIONS</p>
+                    <h1 id="title">Dashboard</h1>
+                </div>
+                <div id="clock"></div>
+            </header>
+            <section id="app"></section>
+        </main>
+    </div>
+    <div id="toast"></div>
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
