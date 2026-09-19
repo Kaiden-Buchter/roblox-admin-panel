@@ -9,6 +9,8 @@ const json = (data, status = 200, headers = {}) =>
 
 const now = () => Date.now();
 
+const SERVER_TTL = 10 * 60 * 1000;
+
 const id = () => crypto.randomUUID();
 
 function cors(env) {
@@ -753,9 +755,10 @@ export default {
                                 SELECT COUNT(*) AS c
                                 FROM servers
                                 WHERE last_heartbeat_at > ?
+                                AND player_count > 0
                             `)
                             .bind(
-                                now() - 15000
+                                now() - SERVER_TTL
                             )
                             .first(),
 
@@ -952,13 +955,25 @@ export default {
                 path === "/api/servers"
             ) {
 
+                await env.DB
+                    .prepare(`
+                        DELETE FROM servers
+                        WHERE last_heartbeat_at <= ?
+                        OR player_count <= 0
+                    `)
+                    .bind(now() - SERVER_TTL)
+                    .run();
+
                 const result =
                     await env.DB
                         .prepare(`
                             SELECT *
                             FROM servers
+                            WHERE last_heartbeat_at > ?
+                            AND player_count > 0
                             ORDER BY last_heartbeat_at DESC
                         `)
+                        .bind(now() - SERVER_TTL)
                         .all();
 
                 return withCors(
@@ -1225,6 +1240,20 @@ async function roblox(
             );
         }
 
+        const playerCount = Math.max(0, Number(body.playerCount || 0));
+
+        if (playerCount === 0) {
+            await env.DB
+                .prepare("DELETE FROM servers WHERE server_id=?")
+                .bind(body.serverId)
+                .run();
+
+            return json({
+                ok: true,
+                removed: true
+            });
+        }
+
         await env.DB.prepare(`
             INSERT INTO servers (
                 server_id,
@@ -1247,9 +1276,7 @@ async function roblox(
             .bind(
                 body.serverId,
                 body.jobId || null,
-                Number(
-                    body.playerCount || 0
-                ),
+                playerCount,
                 Number(
                     body.maxPlayers || 0
                 ),
