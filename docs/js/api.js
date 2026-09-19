@@ -1,2 +1,31 @@
-const API=window.APP_CONFIG.API_BASE.replace(/\/$/,'');
-async function api(path,options={}){const r=await fetch(API+path,{credentials:'include',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});const data=await r.json().catch(()=>({}));if(r.status===401){location.href='login.html';throw new Error('Unauthorized')}if(!r.ok)throw new Error(data.error||'Request failed');return data;}
+const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.API_BASE ? window.APP_CONFIG.API_BASE.replace(/\/$/, '') : '');
+
+async function api(path, options = {}) {
+  const url = API_BASE ? `${API_BASE}${path}` : path;
+  const response = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    },
+    ...options
+  });
+
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch {
+    payload = {};
+  }
+
+  if (response.status === 401 && !window.location.pathname.endsWith('/login.html')) {
+    window.location.href = 'login.html';
+    throw new Error(payload.error || 'Unauthorized');
+  }
+
+  if (!response.ok) {
+    throw new Error(payload.error || payload.message || 'Request failed');
+  }
+
+  return payload;
+}
