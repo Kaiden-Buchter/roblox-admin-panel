@@ -87,7 +87,6 @@ function modal({ eyebrow = 'Confirm action', title: modalTitle, message = '', fi
         const close = value => { cleanup(); modalRoot.innerHTML = ''; resolve(value); };
         modalRoot.querySelector('.modal-close').onclick = () => close(null);
         modalRoot.querySelector('.modal-cancel').onclick = () => close(null);
-        backdrop.onclick = event => { if (event.target === backdrop) close(null); };
         modalRoot.querySelector('form').onsubmit = event => { event.preventDefault(); close(Object.fromEntries(new FormData(event.currentTarget).entries())); };
         modalRoot.querySelector('input, textarea')?.focus();
         const escape = event => { if (event.key === 'Escape') close(null); };
@@ -102,7 +101,7 @@ async function unban(userId) { const answer = await modal({ eyebrow: 'Enforcemen
 async function resetStats(userId) { const answer = await modal({ eyebrow: 'Destructive action', title: 'Reset saved stats?', message: 'This queues a reset for every saved stat on this player. This cannot be undone.', confirmText: 'Reset stats', danger: true }); if (!answer) return; await api('/api/admin/stats/reset', { method: 'POST', body: JSON.stringify({ userId, payload: {} }) }); toast('Reset queued'); player(userId); }
 async function editStats(userId, stats) { const answer = await modal({ eyebrow: 'Player data', title: 'Edit saved stats', message: 'Enter valid JSON. The change will be queued for the Roblox server.', fields: [{ name: 'payload', label: 'Stats JSON', type: 'textarea', value: JSON.stringify(stats, null, 2), required: true }], confirmText: 'Queue update' }); if (!answer) return; let payload; try { payload = JSON.parse(answer.payload); } catch { toast('Invalid JSON'); return; } await api('/api/admin/stats/edit', { method: 'POST', body: JSON.stringify({ userId, payload }) }); toast('Stat edit queued'); player(userId); }
 async function accountSettings() {
-    const answer = await modal({ eyebrow: 'Account settings', title: 'Update your admin account', message: 'Changing your username or password will update your next login.', fields: [{ name: 'username', label: 'Username', value: currentUser?.username || '', required: true }, { name: 'displayName', label: 'Display name', value: currentUser?.displayName || currentUser?.username || '', required: true }, { name: 'currentPassword', label: 'Current password', type: 'password', required: true }, { name: 'newPassword', label: 'New password', type: 'password', placeholder: 'Leave blank to keep current password' }], confirmText: 'Save changes' });
+    const answer = await modal({ eyebrow: 'Account settings', title: 'Update your admin account', message: 'Your username is permanent because it identifies you in audit logs. You can change your display name and password.', fields: [{ name: 'displayName', label: 'Display name', value: currentUser?.displayName || currentUser?.username || '', required: true }, { name: 'currentPassword', label: 'Current password', type: 'password', required: true }, { name: 'newPassword', label: 'New password', type: 'password', placeholder: 'Leave blank to keep current password' }], confirmText: 'Save changes' });
     if (!answer) return;
     try {
         const result = await api('/api/admin/profile', { method: 'POST', body: JSON.stringify(answer) });

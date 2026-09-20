@@ -180,7 +180,7 @@ async function passwordHash(password, salt) {
     return new Uint8Array(await crypto.subtle.deriveBits({
         name: "PBKDF2",
         salt,
-        iterations: 120000,
+        iterations: 100000,
         hash: "SHA-256"
     }, key, 256));
 }
@@ -763,15 +763,15 @@ export default {
             if (path === "/api/admin/profile" && method === "POST") {
                 const body = await req.json().catch(() => ({}));
                 const currentPassword = String(body.currentPassword || "");
-                const username = String(body.username || "").trim();
+                const username = session.username;
                 const displayName = String(body.displayName || username).trim();
                 const newPassword = String(body.newPassword || "");
                 const credential = await env.DB.prepare(
                     "SELECT * FROM admin_credentials WHERE admin_id=?"
                 ).bind(session.adminId).first();
 
-                if (!username || username.length < 3 || !await checkPassword(currentPassword, credential)) {
-                    return withCors(json({ error: "Current password or account details are invalid" }, 400), env);
+                if (!await checkPassword(currentPassword, credential)) {
+                    return withCors(json({ error: "Current password is invalid" }, 400), env);
                 }
 
                 if (newPassword && newPassword.length < 8) {
@@ -780,8 +780,8 @@ export default {
 
                 try {
                     await env.DB.prepare(
-                        "UPDATE admins SET username=?, display_name=? WHERE id=?"
-                    ).bind(username, displayName || username, session.adminId).run();
+                        "UPDATE admins SET display_name=? WHERE id=?"
+                    ).bind(displayName || username, session.adminId).run();
 
                     if (newPassword) {
                         const generated = await createPasswordCredential(newPassword);
