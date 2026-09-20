@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS admins (
   role TEXT NOT NULL DEFAULT 'admin',
   created_at INTEGER NOT NULL,
   created_by INTEGER,
+  active INTEGER NOT NULL DEFAULT 1,
   FOREIGN KEY(created_by) REFERENCES admins(id)
 );
 

@@ -103,7 +103,7 @@ function accountStatus(account) {
 async function adminAccounts() {
     title.textContent = 'Admins';
     const response = await api('/api/admin/accounts');
-    app.innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Admin accounts</h2><small>Create accounts and inspect each account's security history.</small></div><button onclick="createAdmin()">Create admin</button></div><div class="admin-card-grid">${response.accounts.map(account => `<div class="admin-card"><button class="admin-card-open" onclick="adminAccountLogs(${account.id})"><span class="admin-card-avatar">${esc(account.username.slice(0, 1).toUpperCase())}</span><span class="admin-card-main"><b>${esc(account.username)}</b><small>${esc(account.display_name || account.username)} · ${esc(account.role)}</small><em>${esc(accountStatus(account))}</em></span><span class="admin-card-arrow">›</span></button><button class="admin-reset-button" onclick="rotateAdminResetKey(${account.id}, event)">Replace key</button><button class="admin-reset-button" onclick="resetAdminCredentials(${account.id}, event)">Reset credentials</button></div>`).join('') || '<div class="empty-state">No admin accounts found.</div>'}</div></div>`;
+    app.innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Admin accounts</h2><small>Create accounts and inspect each account's security history.</small></div><button onclick="createAdmin()">Create admin</button></div><div class="admin-card-grid">${response.accounts.map(account => `<div class="admin-card ${account.active === 0 ? 'admin-card-disabled' : ''}"><button class="admin-card-open" onclick="adminAccountLogs(${account.id})"><span class="admin-card-avatar">${esc(account.username.slice(0, 1).toUpperCase())}</span><span class="admin-card-main"><b>${esc(account.username)}</b><small>${esc(account.display_name || account.username)} · ${esc(account.role)}</small><em>${account.active === 0 ? 'Deactivated' : esc(accountStatus(account))}</em></span><span class="admin-card-arrow">›</span></button><div class="admin-card-actions"><button class="admin-reset-button" onclick="rotateAdminResetKey(${account.id}, event)">Replace key</button><button class="admin-reset-button" onclick="resetAdminCredentials(${account.id}, event)">Reset credentials</button>${account.id !== 1 && Number(account.id) !== Number(currentUser?.id) ? `<button class="admin-reset-button" onclick="toggleAdmin(${account.id}, ${account.active === 0}, event)">${account.active === 0 ? 'Activate' : 'Deactivate'}</button><button class="admin-delete-button" onclick="deleteAdmin(${account.id}, event)">Delete</button>` : ''}</div></div>`).join('') || '<div class="empty-state">No admin accounts found.</div>'}</div></div>`;
 }
 
 async function createAdmin() {
@@ -145,6 +145,21 @@ async function rotateAdminResetKey(accountId, event) {
         await modal({ eyebrow: 'Save this key', title: 'Reset key replaced', message: `Account: ${result.username}\n\nOne-time reset key (never expires):\n${result.oneTimeResetKey}`, fields: [], confirmText: 'Done' });
         adminAccounts();
     } catch (error) { toast(error.message); }
+}
+
+async function toggleAdmin(accountId, activate, event) {
+    event.stopPropagation();
+    const action = activate ? 'activate' : 'deactivate';
+    const answer = await modal({ eyebrow: 'Owner controls', title: `${activate ? 'Activate' : 'Deactivate'} account?`, message: activate ? 'This restores login access for the account.' : 'This blocks login access but preserves the account and its history.', confirmText: activate ? 'Activate account' : 'Deactivate account', danger: !activate });
+    if (!answer) return;
+    try { await api(`/api/admin/accounts/${accountId}/${action}`, { method: 'POST' }); toast(activate ? 'Account activated' : 'Account deactivated'); adminAccounts(); } catch (error) { toast(error.message); }
+}
+
+async function deleteAdmin(accountId, event) {
+    event.stopPropagation();
+    const answer = await modal({ eyebrow: 'Permanent action', title: 'Delete account permanently?', message: 'This permanently removes the account and its credentials. Its deletion event remains in the audit history. This cannot be undone.', confirmText: 'Delete permanently', danger: true });
+    if (!answer) return;
+    try { await api(`/api/admin/accounts/${accountId}`, { method: 'DELETE' }); toast('Account deleted'); adminAccounts(); } catch (error) { toast(error.message); }
 }
 
 async function loadAudit() {

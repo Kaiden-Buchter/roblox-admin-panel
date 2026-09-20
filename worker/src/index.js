@@ -621,9 +621,9 @@ export default {
                 let credential = admin
                     ? await env.DB.prepare("SELECT * FROM admin_credentials WHERE admin_id=?").bind(admin.id).first()
                     : null;
-                let valid = credential
+                let valid = admin?.active !== 0 && (credential
                     ? await checkPassword(password, credential)
-                    : username === env.ADMIN_USERNAME && password === env.ADMIN_PASSWORD;
+                    : username === env.ADMIN_USERNAME && password === env.ADMIN_PASSWORD);
 
                 if (!valid) {
                     return withCors(
@@ -816,7 +816,7 @@ export default {
             if (path === "/api/admin/accounts" && method === "GET") {
                 if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
                 const result = await env.DB.prepare(`
-                    SELECT a.id, a.username, a.display_name, a.role, a.created_at, a.created_by,
+                    SELECT a.id, a.username, a.display_name, a.role, a.created_at, a.created_by, a.active,
                            c.password_changed_at, c.temporary_password, c.temporary_password_expires_at,
                            c.reset_key_expires_at
                     FROM admins a
@@ -858,6 +858,32 @@ export default {
                 } catch (error) {
                     return withCors(json({ error: error.message.includes('UNIQUE') ? 'Username is already in use' : 'Account creation failed' }, 400), env);
                 }
+            }
+
+            const accountStateMatch = path.match(/^\/api\/admin\/accounts\/(\d+)\/(deactivate|activate)$/);
+            if (accountStateMatch && method === "POST") {
+                if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
+                const accountId = Number(accountStateMatch[1]);
+                const active = accountStateMatch[2] === 'activate' ? 1 : 0;
+                if (accountId === 1 || accountId === Number(session.adminId)) return withCors(json({ error: "The primary owner account cannot be changed here" }, 400), env);
+                const account = await env.DB.prepare("SELECT id, username FROM admins WHERE id=?").bind(accountId).first();
+                if (!account) return withCors(json({ error: "Account not found" }, 404), env);
+                await env.DB.prepare("UPDATE admins SET active=? WHERE id=?").bind(active, accountId).run();
+                await audit(env, { adminId: session.adminId, adminUsername: session.username, action: active ? 'ADMIN_ACTIVATED' : 'ADMIN_DEACTIVATED', targetUserId: String(accountId), targetUsername: account.username, reason: active ? 'Owner reactivated account' : 'Owner deactivated account', success: true });
+                return withCors(json({ ok: true, active: !!active }), env);
+            }
+
+            const accountDeleteMatch = path.match(/^\/api\/admin\/accounts\/(\d+)$/);
+            if (accountDeleteMatch && method === "DELETE") {
+                if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
+                const accountId = Number(accountDeleteMatch[1]);
+                if (accountId === 1 || accountId === Number(session.adminId)) return withCors(json({ error: "The primary owner account cannot be deleted here" }, 400), env);
+                const account = await env.DB.prepare("SELECT id, username FROM admins WHERE id=?").bind(accountId).first();
+                if (!account) return withCors(json({ error: "Account not found" }, 404), env);
+                await audit(env, { adminId: session.adminId, adminUsername: session.username, action: 'ADMIN_DELETED', targetUserId: String(accountId), targetUsername: account.username, reason: 'Owner permanently deleted account', success: true });
+                await env.DB.prepare("DELETE FROM admin_credentials WHERE admin_id=?").bind(accountId).run();
+                await env.DB.prepare("DELETE FROM admins WHERE id=?").bind(accountId).run();
+                return withCors(json({ ok: true }), env);
             }
 
             const accountMatch = path.match(/^\/api\/admin\/accounts\/(\d+)\/logs$/);
