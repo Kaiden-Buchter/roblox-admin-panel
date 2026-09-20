@@ -103,7 +103,7 @@ function accountStatus(account) {
 async function adminAccounts() {
     title.textContent = 'Admins';
     const response = await api('/api/admin/accounts');
-    app.innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Admin accounts</h2><small>Create accounts and inspect each account's security history.</small></div><button onclick="createAdmin()">Create admin</button></div><div class="admin-card-grid">${response.accounts.map(account => `<div class="admin-card"><button class="admin-card-open" onclick="adminAccountLogs(${account.id})"><span class="admin-card-avatar">${esc(account.username.slice(0, 1).toUpperCase())}</span><span class="admin-card-main"><b>${esc(account.username)}</b><small>${esc(account.display_name || account.username)} · ${esc(account.role)}</small><em>${esc(accountStatus(account))}</em></span><span class="admin-card-arrow">›</span></button><button class="admin-reset-button" onclick="resetAdminCredentials(${account.id}, event)">Reset credentials</button></div>`).join('') || '<div class="empty-state">No admin accounts found.</div>'}</div></div>`;
+    app.innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Admin accounts</h2><small>Create accounts and inspect each account's security history.</small></div><button onclick="createAdmin()">Create admin</button></div><div class="admin-card-grid">${response.accounts.map(account => `<div class="admin-card"><button class="admin-card-open" onclick="adminAccountLogs(${account.id})"><span class="admin-card-avatar">${esc(account.username.slice(0, 1).toUpperCase())}</span><span class="admin-card-main"><b>${esc(account.username)}</b><small>${esc(account.display_name || account.username)} · ${esc(account.role)}</small><em>${esc(accountStatus(account))}</em></span><span class="admin-card-arrow">›</span></button><button class="admin-reset-button" onclick="rotateAdminResetKey(${account.id}, event)">Replace key</button><button class="admin-reset-button" onclick="resetAdminCredentials(${account.id}, event)">Reset credentials</button></div>`).join('') || '<div class="empty-state">No admin accounts found.</div>'}</div></div>`;
 }
 
 async function createAdmin() {
@@ -127,11 +127,22 @@ async function adminAccountLogs(accountId) {
 
 async function resetAdminCredentials(accountId, event) {
     event.stopPropagation();
-    const answer = await modal({ eyebrow: 'Owner controls', title: 'Reset credentials?', message: 'Enter the current one-time reset key. The key will be consumed and a new temporary password and reset key will be issued.', fields: [{ name: 'resetKey', label: 'Current one-time reset key', type: 'password', required: true }], confirmText: 'Generate reset', danger: true });
+    const answer = await modal({ eyebrow: 'Owner controls', title: 'Reset credentials?', message: 'Enter the current one-time reset key. It never expires, but it is consumed after one successful use.', fields: [{ name: 'resetKey', label: 'Current one-time reset key', type: 'password', required: true }], confirmText: 'Generate reset', danger: true });
     if (!answer) return;
     try {
         const result = await api(`/api/admin/accounts/${accountId}/reset`, { method: 'POST', body: JSON.stringify({ resetKey: answer.resetKey }) });
-        await modal({ eyebrow: 'Save these credentials', title: 'Credentials reset', message: `Username: ${result.username}\nTemporary password: ${result.temporaryPassword}\nExpires: ${fmt(result.expiresAt)}\nOne-time reset key: ${result.oneTimeResetKey}`, fields: [], confirmText: 'Done' });
+        await modal({ eyebrow: 'Save these credentials', title: 'Credentials reset', message: `Username: ${result.username}\nTemporary password: ${result.temporaryPassword}\nTemporary password expires: ${fmt(result.expiresAt)}\nOne-time reset key (never expires): ${result.oneTimeResetKey}`, fields: [], confirmText: 'Done' });
+        adminAccounts();
+    } catch (error) { toast(error.message); }
+}
+
+async function rotateAdminResetKey(accountId, event) {
+    event.stopPropagation();
+    const answer = await modal({ eyebrow: 'Owner recovery', title: 'Replace reset key?', message: 'Use this when the previous key was created before the security update or is no longer available. Your current owner password is required. The new key never expires and works once.', fields: [{ name: 'currentPassword', label: 'Current owner password', type: 'password', required: true }], confirmText: 'Replace key', danger: true });
+    if (!answer) return;
+    try {
+        const result = await api(`/api/admin/accounts/${accountId}/reset-key`, { method: 'POST', body: JSON.stringify(answer) });
+        await modal({ eyebrow: 'Save this key', title: 'Reset key replaced', message: `Account: ${result.username}\n\nOne-time reset key (never expires):\n${result.oneTimeResetKey}`, fields: [], confirmText: 'Done' });
         adminAccounts();
     } catch (error) { toast(error.message); }
 }

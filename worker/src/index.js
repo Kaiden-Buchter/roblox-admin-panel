@@ -852,7 +852,7 @@ export default {
                             reset_key_hash, reset_key_expires_at
                             , reset_key_salt
                         ) VALUES (?, ?, ?, ?, NULL, 1, ?, ?, ?, ?)
-                    `).bind(adminId, generated.hash, generated.salt, now(), expiresAt, resetCredential.hash, expiresAt, resetCredential.salt).run();
+                    `).bind(adminId, generated.hash, generated.salt, now(), expiresAt, resetCredential.hash, null, resetCredential.salt).run();
                     await audit(env, { adminId: session.adminId, adminUsername: session.username, action: 'ADMIN_CREATED', targetUserId: String(adminId), targetUsername: username, reason: `Created ${role} account`, success: true });
                     return withCors(json({ ok: true, account: { id: adminId, username, displayName: username, role, createdAt: now(), temporaryPasswordExpiresAt: expiresAt }, oneTimeResetKey: resetKey }), env);
                 } catch (error) {
@@ -890,7 +890,7 @@ export default {
                     WHERE a.id=?
                 `).bind(accountId).first();
                 if (!account) return withCors(json({ error: "Account not found" }, 404), env);
-                if (!suppliedResetKey || account.reset_key_used_at || !account.reset_key_expires_at || account.reset_key_expires_at <= now() || !await checkPassword(suppliedResetKey, account)) {
+                if (!suppliedResetKey || account.reset_key_used_at || !await checkPassword(suppliedResetKey, account)) {
                     return withCors(json({ error: "A valid unused reset key is required" }, 400), env);
                 }
                 const temporaryPassword = randomSecret(18);
@@ -898,9 +898,30 @@ export default {
                 const credential = await createPasswordCredential(temporaryPassword);
                 const resetCredential = await createPasswordCredential(resetKey);
                 const expiresAt = now() + TEMP_PASSWORD_TTL;
-                await env.DB.prepare(`UPDATE admin_credentials SET password_hash=?, password_salt=?, updated_at=?, password_changed_at=NULL, temporary_password=1, temporary_password_expires_at=?, reset_key_hash=?, reset_key_salt=?, reset_key_expires_at=?, reset_key_used_at=NULL WHERE admin_id=?`).bind(credential.hash, credential.salt, now(), expiresAt, resetCredential.hash, resetCredential.salt, expiresAt, accountId).run();
+                await env.DB.prepare(`UPDATE admin_credentials SET password_hash=?, password_salt=?, updated_at=?, password_changed_at=NULL, temporary_password=1, temporary_password_expires_at=?, reset_key_hash=?, reset_key_salt=?, reset_key_expires_at=NULL, reset_key_used_at=NULL WHERE admin_id=?`).bind(credential.hash, credential.salt, now(), expiresAt, resetCredential.hash, resetCredential.salt, accountId).run();
                 await audit(env, { adminId: session.adminId, adminUsername: session.username, action: 'ADMIN_PASSWORD_RESET', targetUserId: accountId, targetUsername: account.username, reason: 'Owner-generated temporary credentials', success: true });
                 return withCors(json({ ok: true, username: account.username, temporaryPassword, oneTimeResetKey: resetKey, expiresAt }), env);
+            }
+
+            const rotateKeyMatch = path.match(/^\/api\/admin\/accounts\/(\d+)\/reset-key$/);
+            if (rotateKeyMatch && method === "POST") {
+                if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
+                const body = await req.json().catch(() => ({}));
+                const currentPassword = String(body.currentPassword || '');
+                const ownerCredential = await env.DB.prepare("SELECT * FROM admin_credentials WHERE admin_id=?").bind(session.adminId).first();
+                if (!await checkPassword(currentPassword, ownerCredential)) return withCors(json({ error: "Current owner password is invalid" }, 400), env);
+                const accountId = rotateKeyMatch[1];
+                const account = await env.DB.prepare("SELECT id, username FROM admins WHERE id=?").bind(accountId).first();
+                if (!account) return withCors(json({ error: "Account not found" }, 404), env);
+                const resetKey = randomSecret(24);
+                const resetCredential = await createPasswordCredential(resetKey);
+                await env.DB.prepare(`
+                    UPDATE admin_credentials
+                    SET reset_key_hash=?, reset_key_salt=?, reset_key_expires_at=NULL, reset_key_used_at=NULL
+                    WHERE admin_id=?
+                `).bind(resetCredential.hash, resetCredential.salt, accountId).run();
+                await audit(env, { adminId: session.adminId, adminUsername: session.username, action: 'ADMIN_RESET_KEY_ROTATED', targetUserId: accountId, targetUsername: account.username, reason: 'Owner replaced reset key', success: true });
+                return withCors(json({ ok: true, username: account.username, oneTimeResetKey: resetKey }), env);
             }
 
             if (path === "/api/admin/profile" && method === "POST") {
