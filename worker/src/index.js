@@ -9,6 +9,8 @@ const json = (data, status = 200, headers = {}) =>
 
 const now = () => Date.now();
 
+const ACTIVE_SESSION_TTL = 30 * 1000;
+
 const SERVER_TTL = 10 * 60 * 1000;
 
 const id = () => crypto.randomUUID();
@@ -739,7 +741,7 @@ export default {
                                 WHERE last_heartbeat_at > ?
                             `)
                             .bind(
-                                now() - 15000
+                                now() - ACTIVE_SESSION_TTL
                             )
                             .first(),
 
@@ -823,7 +825,7 @@ export default {
                             ORDER BY username
                         `)
                         .bind(
-                            now() - 15000
+                            now() - ACTIVE_SESSION_TTL
                         )
                         .all();
 
@@ -1470,6 +1472,35 @@ async function roblox(
                 ),
                 now(),
                 String(body.userId)
+            )
+            .run();
+
+        await env.DB.prepare(`
+            INSERT INTO active_sessions (
+                user_id,
+                username,
+                server_id,
+                state,
+                joined_at,
+                last_heartbeat_at,
+                metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id)
+            DO UPDATE SET
+                username=excluded.username,
+                server_id=excluded.server_id,
+                state=excluded.state,
+                last_heartbeat_at=excluded.last_heartbeat_at
+        `)
+            .bind(
+                String(body.userId),
+                body.username || "Unknown",
+                body.serverId || "Unknown",
+                body.state || "Playing",
+                now(),
+                now(),
+                JSON.stringify(body.metadata || {})
             )
             .run();
 

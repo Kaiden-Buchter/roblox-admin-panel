@@ -1,6 +1,7 @@
 node_modules/
 worker/
-roblox/
+!roblox/
+!roblox
 .dev.vars
 .env*
 .DS_Store
