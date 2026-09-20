@@ -37,13 +37,17 @@ body::before {
     background-size: 40px 40px;
 }
 
-.shell { display: flex; min-height: 100vh; position: relative }
+.top-banner { position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 68px; padding: 12px clamp(18px, 4vw, 60px); background: #0d1314ed; border-bottom: 1px solid var(--line); box-shadow: 0 8px 28px #0005; backdrop-filter: blur(18px) }
+.top-banner-brand { color: var(--text); font-size: 16px; font-weight: 900; letter-spacing: 2.5px }
+.top-banner-brand span { color: var(--mint) }
+.top-banner-brand small { margin-left: 10px; color: var(--faint); font-size: 9px; font-weight: 700; letter-spacing: 1.4px }
+.shell { display: flex; min-height: calc(100vh - 68px); position: relative }
 
 aside {
     width: 246px;
     flex: 0 0 246px;
-    height: 100vh;
-    max-height: 100dvh;
+    height: calc(100vh - 68px);
+    max-height: calc(100dvh - 68px);
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -64,6 +68,8 @@ aside {
 nav { display: grid; gap: 5px }
 nav button { width: 100%; text-align: left; color: var(--muted); background: transparent; border: 1px solid transparent; padding: 12px 13px; font-size: 13px }
 nav button:hover, nav button:focus-visible { color: var(--text); background: var(--surface-soft); border-color: var(--line); transform: translateX(2px) }
+nav button.active { position: relative; color: var(--text); background: #1b2928; border-color: #38534d; box-shadow: inset 0 0 20px #78e6ad0b }
+nav button.active::before { content: ""; position: absolute; left: -1px; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: var(--mint); box-shadow: 0 0 12px var(--mint) }
 .ghost {
     position: sticky;
     bottom: 0;
@@ -198,6 +204,10 @@ pre { max-width: 380px; margin: 0; color: #adc0b9; font: 11px/1.5 Consolas, mono
 
 @media(max-width:600px) {
     .shell { display: block }
+    .top-banner { min-height: 62px; padding: 10px 14px }
+    .top-banner-brand { font-size: 14px }
+    .top-banner-brand small { display: none }
+    .shell { min-height: calc(100vh - 62px) }
     aside { width: auto; height: auto; max-height: none; min-height: 0; padding: 20px 14px 14px; gap: 18px; position: static; overflow: visible }
     nav { grid-template-columns: repeat(2, 1fr) }
     .ghost { position: static; margin-top: 4px; box-shadow: none }

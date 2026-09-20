@@ -121,7 +121,7 @@ async function accountSettings() {
 function toast(message) { const element = document.querySelector('#toast'); element.textContent = message; element.classList.add('show'); setTimeout(() => element.classList.remove('show'), 2200); }
 
 const views = { dashboard, active, players, servers, bans, audit };
-document.querySelectorAll('nav button').forEach(button => { button.onclick = () => views[button.dataset.view](); });
+document.querySelectorAll('nav button').forEach(button => { button.onclick = () => { document.querySelectorAll('nav button').forEach(item => item.classList.remove('active')); button.classList.add('active'); views[button.dataset.view](); }; });
 async function logout() { await api('/api/auth/logout', { method: 'POST' }); location.href = 'login.html'; }
 document.querySelector('#logout').onclick = logout;
 document.querySelector('#profile-logout').onclick = logout;
@@ -129,5 +129,5 @@ document.querySelector('#account-settings').onclick = () => { document.querySele
 document.querySelector('#profile-button').onclick = () => { const button = document.querySelector('#profile-button'); const menu = document.querySelector('#profile-menu'); menu.hidden = !menu.hidden; button.setAttribute('aria-expanded', String(!menu.hidden)); };
 document.addEventListener('click', event => { if (!event.target.closest('.profile-control')) { document.querySelector('#profile-menu').hidden = true; document.querySelector('#profile-button').setAttribute('aria-expanded', 'false'); } });
 setInterval(() => { document.querySelector('#clock').textContent = new Date().toLocaleTimeString(); }, 1000);
-api('/api/me').then(response => { setProfile(response.user); dashboard(); }).catch(() => {});
+api('/api/me').then(response => { setProfile(response.user); document.querySelector('nav button[data-view="dashboard"]')?.classList.add('active'); dashboard(); }).catch(() => {});
 setInterval(() => { if (title.textContent === 'Dashboard') dashboard(); if (title.textContent === 'Active Players') active(); }, 5000);
