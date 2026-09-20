@@ -12,6 +12,7 @@ const now = () => Date.now();
 const ACTIVE_SESSION_TTL = 30 * 1000;
 
 const SERVER_TTL = 10 * 60 * 1000;
+const AUDIT_LOG_LIMIT = 500;
 
 const id = () => crypto.randomUUID();
 
@@ -240,11 +241,20 @@ async function auth(req, env) {
 
 async function audit(env, data) {
     try {
+        let adminDisplayName = data.adminDisplayName || null;
+        if (!adminDisplayName && data.adminId) {
+            const admin = await env.DB.prepare(
+                "SELECT display_name FROM admins WHERE id=?"
+            ).bind(data.adminId).first();
+            adminDisplayName = admin?.display_name || null;
+        }
+
         await env.DB.prepare(`
             INSERT INTO audit_logs (
                 timestamp,
                 admin_id,
                 admin_username,
+                admin_display_name,
                 action,
                 target_user_id,
                 target_username,
@@ -255,12 +265,13 @@ async function audit(env, data) {
                 error_message,
                 request_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
             .bind(
                 now(),
                 data.adminId || null,
                 data.adminUsername || null,
+                adminDisplayName,
                 data.action || "UNKNOWN",
                 data.targetUserId || null,
                 data.targetUsername || null,
@@ -579,13 +590,6 @@ export default {
                     : username === env.ADMIN_USERNAME && password === env.ADMIN_PASSWORD;
 
                 if (!valid) {
-
-                    await audit(env, {
-                        action: "LOGIN_FAILED",
-                        reason: "Invalid credentials",
-                        success: false
-                    });
-
                     return withCors(
                         json(
                             {
@@ -1140,13 +1144,14 @@ export default {
                             OR target_user_id LIKE ?
                             OR action LIKE ?
                             ORDER BY id DESC
-                            LIMIT 500
+                            LIMIT ?
                         `)
                         .bind(
                             `%${q}%`,
                             `%${q}%`,
                             `%${q}%`,
-                            `%${q}%`
+                            `%${q}%`,
+                            AUDIT_LOG_LIMIT
                         )
                         .all();
 

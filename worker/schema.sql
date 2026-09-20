@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   timestamp INTEGER NOT NULL,
   admin_id INTEGER,
   admin_username TEXT,
+  admin_display_name TEXT,
   action TEXT NOT NULL,
   target_user_id TEXT,
   target_username TEXT,

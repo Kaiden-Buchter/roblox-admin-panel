@@ -132,6 +132,8 @@ h2 { margin: 0 0 6px; color: var(--text); font-size: 16px; letter-spacing: .2px 
 .wide-button { width: 100% }
 
 .table-wrap { margin: 0 -8px -8px; overflow: auto }
+.audit-scroll { max-height: 520px; overflow: auto; border: 1px solid var(--line-soft); border-radius: 7px; scrollbar-width: thin; scrollbar-color: var(--line) transparent }
+.audit-scroll table { min-width: 760px }
 table { width: 100%; border-collapse: collapse; min-width: 620px }
 th, td { padding: 13px 14px; border-bottom: 1px solid var(--line-soft); text-align: left; vertical-align: top; font-size: 13px }
 th { color: var(--faint); font-size: 10px; letter-spacing: 1.3px; text-transform: uppercase }
@@ -142,7 +144,10 @@ tbody tr:last-child td { border-bottom: 0 }
 
 .toolbar input { flex: 1 }
 .search-group { display: flex; gap: 8px; min-width: min(430px, 100%) }
+select { min-width: 128px; padding: 10px 11px; color: var(--text); background: var(--surface-deep); border: 1px solid var(--line); border-radius: 7px; cursor: pointer }
+select:focus { outline: 2px solid var(--mint); outline-offset: 2px }
 input, textarea { width: 100%; padding: 11px 12px; color: var(--text); background: var(--surface-deep); border: 1px solid var(--line); border-radius: 7px; outline: none }
+input[readonly] { color: var(--muted); background: #131a1b; border-color: var(--line-soft); cursor: not-allowed }
 input:focus, textarea:focus { border-color: var(--mint); box-shadow: 0 0 0 3px #78e6ad1a }
 pre { max-width: 380px; margin: 0; color: #adc0b9; font: 11px/1.5 Consolas, monospace; white-space: pre-wrap }
 .bigpre { max-height: 380px; overflow: auto }
@@ -204,6 +209,7 @@ pre { max-width: 380px; margin: 0; color: #adc0b9; font: 11px/1.5 Consolas, mono
     .panel { padding: 20px 14px }
     .panel-head, .toolbar { align-items: stretch; flex-direction: column }
     .search-group { width: 100%; min-width: 0 }
+    .search-group select { flex: 1 }
     .detail-list { grid-template-columns: 1fr }
     .stat { min-height: 110px; padding: 16px }
     .stat strong { margin-top: 14px; font-size: 28px }
