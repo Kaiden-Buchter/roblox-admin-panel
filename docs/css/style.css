@@ -470,3 +470,70 @@ tbody tr:hover {
         flex-direction: column;
     }
 }
+
+.command-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 13px 16px;
+    margin-bottom: 14px;
+    background: #12201d99;
+    border: 1px solid #285441;
+    border-radius: 10px;
+}
+
+.command-strip > div,
+.profile-heading {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.command-strip small { margin: 0 0 0 6px; display: inline }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 5px #61e3a61c, 0 0 15px var(--accent) }
+.subtle-button { padding: 7px 10px; color: var(--muted); font-size: 12px }
+.stat-live strong { color: var(--accent) }
+.stat-alert strong { color: #ffb36b }
+.dashboard-grid { align-items: stretch }
+.dashboard-grid .panel { margin-bottom: 0 }
+.status-mark { color: var(--accent); background: var(--accent-dim); border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 700 }
+.pulse-list { display: grid; gap: 2px; margin: 20px 0 }
+.pulse-list div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line-soft); padding: 12px 0 }
+.pulse-list span { color: var(--muted) }
+.pulse-list b { color: var(--text) }
+.wide-button { width: 100% }
+.search-group { display: flex; gap: 8px; min-width: min(430px, 100%) }
+.search-group input { min-width: 0; width: 100% }
+.profile-panel { min-height: 280px }
+.avatar { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: #07100b; background: var(--accent); font-weight: 900; font-size: 20px }
+.detail-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 25px }
+.detail-list div { padding: 11px; background: #0a1017; border: 1px solid var(--line-soft); border-radius: 8px }
+.detail-list span { display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px }
+.detail-list b { font-size: 12px; overflow-wrap: anywhere }
+.danger-button { color: #ffdce0; border-color: #6d3039; background: #3a1e25 }
+.danger-button:hover { background: #51242e; border-color: #a74c5a }
+
+#modal-root { position: relative; z-index: 20 }
+.modal-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: 20px; background: #020507b8; backdrop-filter: blur(8px); animation: modal-in .16s ease-out }
+.modal { position: relative; width: min(500px, 100%); padding: 28px; background: linear-gradient(145deg, #17222d, #0c1219); border: 1px solid #3a4b5e; border-radius: 14px; box-shadow: 0 30px 100px #000b }
+.modal-close { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 24px; line-height: 1 }
+.modal-close:hover { color: var(--text); transform: none; background: #ffffff0d }
+.modal-eyebrow { color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase }
+.modal h2 { margin-top: 9px; margin-bottom: 8px; font-size: 21px }
+.modal-message { margin: 0 0 20px; color: var(--muted); line-height: 1.55; font-size: 13px }
+.modal-form { display: grid; gap: 14px }
+.modal-form label { display: grid; gap: 7px; color: #c4ced8; font-size: 12px; font-weight: 700 }
+.modal-form input, .modal-form textarea { width: 100%; border-color: #344555; background: #091017 }
+.modal-form textarea { min-height: 116px; resize: vertical; font: 12px/1.5 Consolas, monospace; color: #bfe8d4 }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px }
+.modal-cancel { background: transparent }
+@keyframes modal-in { from { opacity: 0 } to { opacity: 1 } }
+
+@media(max-width:600px) {
+    .command-strip { align-items: flex-start; flex-direction: column }
+    .command-strip small { display: block; margin: 4px 0 0 19px }
+    .search-group { min-width: 0; width: 100% }
+    .detail-list { grid-template-columns: 1fr }
+    .modal { padding: 24px 18px 18px }
+}
