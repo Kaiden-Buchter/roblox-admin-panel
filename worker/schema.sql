@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS admin_credentials (
   temporary_password INTEGER NOT NULL DEFAULT 1,
   temporary_password_expires_at INTEGER,
   reset_key_hash TEXT,
+  reset_key_salt TEXT,
   reset_key_expires_at INTEGER,
   reset_key_used_at INTEGER,
   FOREIGN KEY(admin_id) REFERENCES admins(id) ON DELETE CASCADE

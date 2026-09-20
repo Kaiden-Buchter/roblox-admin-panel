@@ -850,8 +850,9 @@ export default {
                             admin_id, password_hash, password_salt, updated_at,
                             password_changed_at, temporary_password, temporary_password_expires_at,
                             reset_key_hash, reset_key_expires_at
-                        ) VALUES (?, ?, ?, ?, NULL, 1, ?, ?, ?)
-                    `).bind(adminId, generated.hash, generated.salt, now(), expiresAt, resetCredential.hash, expiresAt).run();
+                            , reset_key_salt
+                        ) VALUES (?, ?, ?, ?, NULL, 1, ?, ?, ?, ?)
+                    `).bind(adminId, generated.hash, generated.salt, now(), expiresAt, resetCredential.hash, expiresAt, resetCredential.salt).run();
                     await audit(env, { adminId: session.adminId, adminUsername: session.username, action: 'ADMIN_CREATED', targetUserId: String(adminId), targetUsername: username, reason: `Created ${role} account`, success: true });
                     return withCors(json({ ok: true, account: { id: adminId, username, displayName: username, role, createdAt: now(), temporaryPasswordExpiresAt: expiresAt }, oneTimeResetKey: resetKey }), env);
                 } catch (error) {
@@ -881,15 +882,15 @@ export default {
                 if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
                 const accountId = resetMatch[1];
                 const body = await req.json().catch(() => ({}));
-                const resetKey = String(body.resetKey || '');
+                const suppliedResetKey = String(body.resetKey || '');
                 const account = await env.DB.prepare(`
-                    SELECT a.id, a.username, c.reset_key_hash, c.reset_key_expires_at, c.reset_key_used_at
+                    SELECT a.id, a.username, c.reset_key_hash AS password_hash, c.reset_key_salt AS password_salt, c.reset_key_expires_at, c.reset_key_used_at
                     FROM admins a
                     LEFT JOIN admin_credentials c ON c.admin_id=a.id
                     WHERE a.id=?
                 `).bind(accountId).first();
                 if (!account) return withCors(json({ error: "Account not found" }, 404), env);
-                if (!resetKey || account.reset_key_used_at || !account.reset_key_expires_at || account.reset_key_expires_at <= now() || !await checkPassword(resetKey, account)) {
+                if (!suppliedResetKey || account.reset_key_used_at || !account.reset_key_expires_at || account.reset_key_expires_at <= now() || !await checkPassword(suppliedResetKey, account)) {
                     return withCors(json({ error: "A valid unused reset key is required" }, 400), env);
                 }
                 const temporaryPassword = randomSecret(18);
@@ -897,7 +898,7 @@ export default {
                 const credential = await createPasswordCredential(temporaryPassword);
                 const resetCredential = await createPasswordCredential(resetKey);
                 const expiresAt = now() + TEMP_PASSWORD_TTL;
-                await env.DB.prepare(`UPDATE admin_credentials SET password_hash=?, password_salt=?, updated_at=?, password_changed_at=NULL, temporary_password=1, temporary_password_expires_at=?, reset_key_hash=?, reset_key_expires_at=?, reset_key_used_at=? WHERE admin_id=?`).bind(credential.hash, credential.salt, now(), expiresAt, resetCredential.hash, expiresAt, now(), accountId).run();
+                await env.DB.prepare(`UPDATE admin_credentials SET password_hash=?, password_salt=?, updated_at=?, password_changed_at=NULL, temporary_password=1, temporary_password_expires_at=?, reset_key_hash=?, reset_key_salt=?, reset_key_expires_at=?, reset_key_used_at=NULL WHERE admin_id=?`).bind(credential.hash, credential.salt, now(), expiresAt, resetCredential.hash, resetCredential.salt, expiresAt, accountId).run();
                 await audit(env, { adminId: session.adminId, adminUsername: session.username, action: 'ADMIN_PASSWORD_RESET', targetUserId: accountId, targetUsername: account.username, reason: 'Owner-generated temporary credentials', success: true });
                 return withCors(json({ ok: true, username: account.username, temporaryPassword, oneTimeResetKey: resetKey, expiresAt }), env);
             }

@@ -127,10 +127,10 @@ async function adminAccountLogs(accountId) {
 
 async function resetAdminCredentials(accountId, event) {
     event.stopPropagation();
-    const answer = await modal({ eyebrow: 'Owner controls', title: 'Reset credentials?', message: 'This immediately replaces the account password with a temporary password that expires in 24 hours. A new one-time reset key will be shown once.', confirmText: 'Generate reset', danger: true });
+    const answer = await modal({ eyebrow: 'Owner controls', title: 'Reset credentials?', message: 'Enter the current one-time reset key. The key will be consumed and a new temporary password and reset key will be issued.', fields: [{ name: 'resetKey', label: 'Current one-time reset key', type: 'password', required: true }], confirmText: 'Generate reset', danger: true });
     if (!answer) return;
     try {
-        const result = await api(`/api/admin/accounts/${accountId}/reset`, { method: 'POST' });
+        const result = await api(`/api/admin/accounts/${accountId}/reset`, { method: 'POST', body: JSON.stringify({ resetKey: answer.resetKey }) });
         await modal({ eyebrow: 'Save these credentials', title: 'Credentials reset', message: `Username: ${result.username}\nTemporary password: ${result.temporaryPassword}\nExpires: ${fmt(result.expiresAt)}\nOne-time reset key: ${result.oneTimeResetKey}`, fields: [], confirmText: 'Done' });
         adminAccounts();
     } catch (error) { toast(error.message); }
