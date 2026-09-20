@@ -223,6 +223,18 @@ pre { max-width: 380px; margin: 0; color: #adc0b9; font: 11px/1.5 Consolas, mono
 .modal-eyebrow { color: var(--mint); font-size: 10px; font-weight: 900; letter-spacing: 1.8px; text-transform: uppercase }
 .modal h2 { margin-top: 9px; font-size: 21px }
 .modal-message { margin: 0 0 20px; color: var(--muted); font-size: 13px; line-height: 1.55 }
+.modal-rich-message { margin-top: 18px; color: var(--text); }
+.account-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.account-detail-grid div { padding: 10px 11px; background: #0e1114; border: 1px solid var(--line-soft); border-radius: 7px; }
+.account-detail-grid span { display: block; margin-bottom: 4px; color: var(--faint); font-size: 10px; letter-spacing: .5px; text-transform: uppercase; }
+.account-detail-grid b { display: block; color: var(--text); font-size: 12px; line-height: 1.35; }
+.account-log-heading { margin: 22px 0 8px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
+.account-log-list { display: grid; gap: 6px; max-height: 190px; margin: 0; padding: 0 4px 0 0; overflow-y: auto; list-style: none; }
+.account-log-list li { display: grid; grid-template-columns: 116px 1fr; gap: 2px 9px; padding: 9px 10px; background: #0e1114; border: 1px solid var(--line-soft); border-radius: 6px; }
+.account-log-list time { grid-row: span 2; color: var(--faint); font-size: 10px; line-height: 1.35; }
+.account-log-list b { color: var(--text); font-size: 11px; }
+.account-log-list span { color: var(--muted); font-size: 11px; }
+.account-log-empty { display: block !important; color: var(--muted); font-size: 12px; }
 .modal-form { display: grid; gap: 14px }
 .modal-form label { display: grid; gap: 7px; color: #c8d4ce; font-size: 12px; font-weight: 700 }
 .modal-form textarea { min-height: 116px; resize: vertical; color: #bfe8d4; font: 12px/1.5 Consolas, monospace }
@@ -257,4 +269,7 @@ pre { max-width: 380px; margin: 0; color: #adc0b9; font: 11px/1.5 Consolas, mono
     .stat { min-height: 110px; padding: 16px }
     .stat strong { margin-top: 14px; font-size: 28px }
     .modal { padding: 24px 18px 18px }
+    .account-detail-grid { grid-template-columns: 1fr }
+    .account-log-list li { grid-template-columns: 1fr; gap: 3px }
+    .account-log-list time { grid-row: auto }
 }

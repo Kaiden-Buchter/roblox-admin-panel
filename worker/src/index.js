@@ -1008,6 +1008,7 @@ export default {
                             .prepare(`
                                 SELECT *
                                 FROM audit_logs
+                                WHERE action NOT IN ('ADMIN_PASSWORD_CHANGED', 'ADMIN_PASSWORD_RESET')
                                 ORDER BY id DESC
                                 LIMIT 10
                             `)
@@ -1270,10 +1271,11 @@ export default {
                         .prepare(`
                             SELECT *
                             FROM audit_logs
-                            WHERE admin_username LIKE ?
+                            WHERE action NOT IN ('ADMIN_PASSWORD_CHANGED', 'ADMIN_PASSWORD_RESET')
+                            AND (admin_username LIKE ?
                             OR target_username LIKE ?
                             OR target_user_id LIKE ?
-                            OR action LIKE ?
+                            OR action LIKE ?)
                             ORDER BY id DESC
                             LIMIT ?
                         `)
