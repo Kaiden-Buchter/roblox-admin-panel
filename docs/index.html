@@ -23,7 +23,19 @@
                     <p class="eyebrow">GAME OPERATIONS</p>
                     <h1 id="title">Dashboard</h1>
                 </div>
-                <div id="clock"></div>
+                <div class="header-tools">
+                    <div id="clock"></div>
+                    <div class="profile-control">
+                        <button id="profile-button" class="profile-button" aria-expanded="false" aria-haspopup="true">
+                            <span id="profile-avatar">A</span><span id="profile-name">Account</span><span class="profile-chevron">⌄</span>
+                        </button>
+                        <div id="profile-menu" class="profile-menu" hidden>
+                            <div class="profile-menu-head"><span id="profile-menu-avatar">A</span><div><b id="profile-menu-name">Account</b><small id="profile-menu-role">Admin</small></div></div>
+                            <button id="account-settings" class="profile-menu-item">Account settings</button>
+                            <button id="profile-logout" class="profile-menu-item">Log out</button>
+                        </div>
+                    </div>
+                </div>
             </header>
             <section id="app"></section>
         </main>

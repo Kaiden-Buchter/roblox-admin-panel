@@ -85,6 +85,19 @@ header { display: flex; align-items: end; justify-content: space-between; gap: 2
 h1 { margin: 0; color: var(--text); font-size: clamp(28px, 3vw, 40px); letter-spacing: -.7px }
 h2 { margin: 0 0 6px; color: var(--text); font-size: 16px; letter-spacing: .2px }
 #clock { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums }
+.header-tools { display: flex; align-items: center; gap: 18px }
+.profile-control { position: relative }
+.profile-button { display: flex; align-items: center; gap: 8px; padding: 5px 9px 5px 5px; background: #151e1f; border-color: var(--line); font-size: 12px; font-weight: 700 }
+.profile-button:hover { transform: none; background: #202c2d }
+.profile-button > span:first-child, #profile-menu-avatar { display: grid; place-items: center; width: 28px; height: 28px; color: #07100b; background: var(--mint); border-radius: 7px; font-size: 12px; font-weight: 900 }
+.profile-chevron { color: var(--muted); font-size: 14px; line-height: 1 }
+.profile-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 10; width: 226px; padding: 8px; background: #172122; border: 1px solid #405454; border-radius: 9px; box-shadow: 0 22px 60px #0009; animation: menu-in .14s ease-out }
+.profile-menu-head { display: flex; align-items: center; gap: 10px; padding: 10px; margin-bottom: 5px; border-bottom: 1px solid var(--line-soft) }
+.profile-menu-head b { display: block; color: var(--text); font-size: 12px }
+.profile-menu-head small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; text-transform: capitalize }
+.profile-menu-item { display: block; width: 100%; padding: 10px; color: var(--muted); background: transparent; border: 0; text-align: left; font-size: 12px }
+.profile-menu-item:hover { color: var(--text); background: var(--surface-soft); transform: none }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
 
 .command-strip { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; padding: 13px 16px; background: #14211ccf; border: 1px solid #315641; border-radius: 8px }
 .command-strip > div, .profile-heading { display: flex; align-items: center; gap: 11px }
@@ -185,6 +198,7 @@ pre { max-width: 380px; margin: 0; color: #adc0b9; font: 11px/1.5 Consolas, mono
     .ghost { position: static; margin-top: 4px; box-shadow: none }
     main { padding: 24px 14px 40px }
     header { align-items: flex-start; flex-direction: column; gap: 12px }
+    .header-tools { width: 100%; justify-content: space-between }
     .command-strip { align-items: flex-start; flex-direction: column }
     .command-strip small { display: block; margin: 4px 0 0 19px }
     .panel { padding: 20px 14px }

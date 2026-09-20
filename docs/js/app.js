@@ -1,6 +1,7 @@
 const app = document.querySelector('#app');
 const title = document.querySelector('#title');
 const modalRoot = document.querySelector('#modal-root');
+let currentUser = null;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const fmt = timestamp => timestamp ? new Date(timestamp).toLocaleString() : '—';
 
@@ -10,6 +11,17 @@ function card(label, value, tone = '') {
 
 function emptyRow(columns, message) {
     return `<tr><td colspan="${columns}" class="empty-state">${message}</td></tr>`;
+}
+
+function setProfile(user) {
+    currentUser = user;
+    const name = user?.displayName || user?.username || 'Account';
+    const initial = name.slice(0, 1).toUpperCase();
+    document.querySelector('#profile-name').textContent = name;
+    document.querySelector('#profile-avatar').textContent = initial;
+    document.querySelector('#profile-menu-name').textContent = name;
+    document.querySelector('#profile-menu-role').textContent = user?.role || 'Admin';
+    document.querySelector('#profile-menu-avatar').textContent = initial;
 }
 
 async function dashboard() {
@@ -89,11 +101,27 @@ async function ban(userId, username) { const answer = await modal({ eyebrow: 'En
 async function unban(userId) { const answer = await modal({ eyebrow: 'Enforcement', title: 'Unban this player?', message: 'This will revoke the active ban and allow the player to return.', confirmText: 'Revoke ban' }); if (!answer) return; await api('/api/admin/unban', { method: 'POST', body: JSON.stringify({ userId }) }); toast('Player unbanned'); bans(); }
 async function resetStats(userId) { const answer = await modal({ eyebrow: 'Destructive action', title: 'Reset saved stats?', message: 'This queues a reset for every saved stat on this player. This cannot be undone.', confirmText: 'Reset stats', danger: true }); if (!answer) return; await api('/api/admin/stats/reset', { method: 'POST', body: JSON.stringify({ userId, payload: {} }) }); toast('Reset queued'); player(userId); }
 async function editStats(userId, stats) { const answer = await modal({ eyebrow: 'Player data', title: 'Edit saved stats', message: 'Enter valid JSON. The change will be queued for the Roblox server.', fields: [{ name: 'payload', label: 'Stats JSON', type: 'textarea', value: JSON.stringify(stats, null, 2), required: true }], confirmText: 'Queue update' }); if (!answer) return; let payload; try { payload = JSON.parse(answer.payload); } catch { toast('Invalid JSON'); return; } await api('/api/admin/stats/edit', { method: 'POST', body: JSON.stringify({ userId, payload }) }); toast('Stat edit queued'); player(userId); }
+async function accountSettings() {
+    const answer = await modal({ eyebrow: 'Account settings', title: 'Update your admin account', message: 'Changing your username or password will update your next login.', fields: [{ name: 'username', label: 'Username', value: currentUser?.username || '', required: true }, { name: 'displayName', label: 'Display name', value: currentUser?.displayName || currentUser?.username || '', required: true }, { name: 'currentPassword', label: 'Current password', type: 'password', required: true }, { name: 'newPassword', label: 'New password', type: 'password', placeholder: 'Leave blank to keep current password' }], confirmText: 'Save changes' });
+    if (!answer) return;
+    try {
+        const result = await api('/api/admin/profile', { method: 'POST', body: JSON.stringify(answer) });
+        setProfile(result.user);
+        toast('Account updated');
+    } catch (error) {
+        toast(error.message);
+    }
+}
 function toast(message) { const element = document.querySelector('#toast'); element.textContent = message; element.classList.add('show'); setTimeout(() => element.classList.remove('show'), 2200); }
 
 const views = { dashboard, active, players, servers, bans, audit };
 document.querySelectorAll('nav button').forEach(button => { button.onclick = () => views[button.dataset.view](); });
-document.querySelector('#logout').onclick = async () => { await api('/api/auth/logout', { method: 'POST' }); location.href = 'login.html'; };
+async function logout() { await api('/api/auth/logout', { method: 'POST' }); location.href = 'login.html'; }
+document.querySelector('#logout').onclick = logout;
+document.querySelector('#profile-logout').onclick = logout;
+document.querySelector('#account-settings').onclick = () => { document.querySelector('#profile-menu').hidden = true; accountSettings(); };
+document.querySelector('#profile-button').onclick = () => { const button = document.querySelector('#profile-button'); const menu = document.querySelector('#profile-menu'); menu.hidden = !menu.hidden; button.setAttribute('aria-expanded', String(!menu.hidden)); };
+document.addEventListener('click', event => { if (!event.target.closest('.profile-control')) { document.querySelector('#profile-menu').hidden = true; document.querySelector('#profile-button').setAttribute('aria-expanded', 'false'); } });
 setInterval(() => { document.querySelector('#clock').textContent = new Date().toLocaleTimeString(); }, 1000);
-api('/api/me').then(() => dashboard()).catch(() => {});
+api('/api/me').then(response => { setProfile(response.user); dashboard(); }).catch(() => {});
 setInterval(() => { if (title.textContent === 'Dashboard') dashboard(); if (title.textContent === 'Active Players') active(); }, 5000);

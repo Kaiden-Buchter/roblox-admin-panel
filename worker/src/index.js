@@ -160,6 +160,43 @@ async function verify(token, secret) {
     }
 }
 
+function bytesEqual(left, right) {
+    if (left.length !== right.length) return false;
+    let difference = 0;
+    for (let index = 0; index < left.length; index += 1) {
+        difference |= left[index] ^ right[index];
+    }
+    return difference === 0;
+}
+
+async function passwordHash(password, salt) {
+    const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(password),
+        "PBKDF2",
+        false,
+        ["deriveBits"]
+    );
+    return new Uint8Array(await crypto.subtle.deriveBits({
+        name: "PBKDF2",
+        salt,
+        iterations: 120000,
+        hash: "SHA-256"
+    }, key, 256));
+}
+
+async function createPasswordCredential(password) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const hash = await passwordHash(password, salt);
+    return { salt: b64url(salt), hash: b64url(hash) };
+}
+
+async function checkPassword(password, credential) {
+    if (!credential?.password_salt || !credential?.password_hash) return false;
+    const hash = await passwordHash(password, unb64url(credential.password_salt));
+    return bytesEqual(hash, unb64url(credential.password_hash));
+}
+
 /* -------------------------------------------------------
    AUTHENTICATION
 ------------------------------------------------------- */
@@ -531,9 +568,15 @@ export default {
                 const password =
                     String(body.password || "");
 
-                const valid =
-                    username === env.ADMIN_USERNAME &&
-                    password === env.ADMIN_PASSWORD;
+                let admin = await env.DB.prepare(
+                    "SELECT * FROM admins WHERE username=?"
+                ).bind(username).first();
+                let credential = admin
+                    ? await env.DB.prepare("SELECT * FROM admin_credentials WHERE admin_id=?").bind(admin.id).first()
+                    : null;
+                let valid = credential
+                    ? await checkPassword(password, credential)
+                    : username === env.ADMIN_USERNAME && password === env.ADMIN_PASSWORD;
 
                 if (!valid) {
 
@@ -554,14 +597,6 @@ export default {
                         env
                     );
                 }
-
-                let admin =
-                    await env.DB
-                        .prepare(
-                            "SELECT * FROM admins WHERE username=?"
-                        )
-                        .bind(username)
-                        .first();
 
                 if (!admin) {
 
@@ -593,6 +628,14 @@ export default {
                             username,
                         role: "admin"
                     };
+                }
+
+                if (!credential) {
+                    const generated = await createPasswordCredential(password);
+                    await env.DB.prepare(`
+                        INSERT OR REPLACE INTO admin_credentials (admin_id, password_hash, password_salt, updated_at)
+                        VALUES (?, ?, ?, ?)
+                    `).bind(admin.id, generated.hash, generated.salt, now()).run();
                 }
 
                 const token =
@@ -715,6 +758,56 @@ export default {
                     }),
                     env
                 );
+            }
+
+            if (path === "/api/admin/profile" && method === "POST") {
+                const body = await req.json().catch(() => ({}));
+                const currentPassword = String(body.currentPassword || "");
+                const username = String(body.username || "").trim();
+                const displayName = String(body.displayName || username).trim();
+                const newPassword = String(body.newPassword || "");
+                const credential = await env.DB.prepare(
+                    "SELECT * FROM admin_credentials WHERE admin_id=?"
+                ).bind(session.adminId).first();
+
+                if (!username || username.length < 3 || !await checkPassword(currentPassword, credential)) {
+                    return withCors(json({ error: "Current password or account details are invalid" }, 400), env);
+                }
+
+                if (newPassword && newPassword.length < 8) {
+                    return withCors(json({ error: "New password must be at least 8 characters" }, 400), env);
+                }
+
+                try {
+                    await env.DB.prepare(
+                        "UPDATE admins SET username=?, display_name=? WHERE id=?"
+                    ).bind(username, displayName || username, session.adminId).run();
+
+                    if (newPassword) {
+                        const generated = await createPasswordCredential(newPassword);
+                        await env.DB.prepare(`
+                            UPDATE admin_credentials
+                            SET password_hash=?, password_salt=?, updated_at=?
+                            WHERE admin_id=?
+                        `).bind(generated.hash, generated.salt, now(), session.adminId).run();
+                    }
+
+                    const token = await sign({
+                        adminId: session.adminId,
+                        username,
+                        role: session.role,
+                        exp: now() + 8 * 60 * 60 * 1000
+                    }, env.SESSION_SECRET);
+                    const response = json({
+                        ok: true,
+                        user: { id: session.adminId, username, displayName: displayName || username, role: session.role }
+                    });
+                    response.headers.set("Set-Cookie", `session=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=28800`);
+                    await audit(env, { adminId: session.adminId, adminUsername: username, action: "UPDATE_PROFILE", success: true });
+                    return withCors(response, env);
+                } catch (error) {
+                    return withCors(json({ error: error.message.includes("UNIQUE") ? "Username is already in use" : "Profile update failed" }, 400), env);
+                }
             }
 
             /* =================================================

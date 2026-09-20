@@ -8,6 +8,14 @@ CREATE TABLE IF NOT EXISTS admins (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS admin_credentials (
+  admin_id INTEGER PRIMARY KEY,
+  password_hash TEXT NOT NULL,
+  password_salt TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(admin_id) REFERENCES admins(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS players (
   user_id TEXT PRIMARY KEY,
   username TEXT NOT NULL,
