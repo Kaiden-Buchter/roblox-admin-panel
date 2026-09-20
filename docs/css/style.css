@@ -159,6 +159,20 @@ tbody tr { transition: background .16s ease }
 tbody tr:hover { background: #ffffff05 }
 tbody tr:last-child td { border-bottom: 0 }
 .empty-state { padding: 34px 12px; color: var(--muted); text-align: center }
+.admin-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 8px }
+.admin-card { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 82px; padding: 8px; text-align: left; background: #15181ce8; border: 1px solid #292e35; border-radius: 7px; box-shadow: none }
+.admin-card:hover { border-color: #626a75; background: #20242a; transform: translateY(-2px) }
+.admin-card-open { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; padding: 5px; border: 0; background: transparent; text-align: left }
+.admin-card-open:hover { background: transparent; transform: none }
+.admin-reset-button { flex: 0 0 auto; padding: 7px 8px; color: var(--muted); background: transparent; border-color: var(--line-soft); font-size: 10px }
+.admin-reset-button:hover { color: var(--text); transform: none }
+.admin-card-avatar { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; color: #111216; background: #ffffff; border-radius: 8px; font-weight: 900 }
+.admin-card-main { min-width: 0; flex: 1 }
+.admin-card-main b, .admin-card-main small, .admin-card-main em { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.admin-card-main b { color: var(--text); font-size: 13px }
+.admin-card-main small { margin-top: 3px; color: var(--muted); font-size: 11px; text-transform: capitalize }
+.admin-card-main em { margin-top: 5px; color: var(--faint); font-size: 10px; font-style: normal }
+.admin-card-arrow { color: var(--muted); font-size: 21px }
 .page-loading { display: flex; align-items: center; justify-content: center; gap: 13px; min-height: 190px; padding: 28px; color: var(--muted); text-align: left }
 .page-loading b { display: block; color: var(--text); font-size: 13px }
 .page-loading small { display: block; margin-top: 3px; color: var(--faint) }
@@ -171,7 +185,7 @@ tbody tr:last-child td { border-bottom: 0 }
 
 .toolbar input { flex: 1 }
 .search-group { display: flex; gap: 8px; min-width: min(430px, 100%) }
-input, textarea { width: 100%; padding: 11px 12px; color: var(--text); background: var(--surface-deep); border: 1px solid var(--line); border-radius: 7px; outline: none }
+input, textarea, select { width: 100%; padding: 11px 12px; color: var(--text); background: var(--surface-deep); border: 1px solid var(--line); border-radius: 7px; outline: none }
 input[readonly] { color: var(--muted); background: #131a1b; border-color: var(--line-soft); cursor: not-allowed }
 input:focus, textarea:focus { border-color: #ffffff; box-shadow: 0 0 0 3px #ffffff18 }
 input::placeholder, textarea::placeholder { color: #657572 }

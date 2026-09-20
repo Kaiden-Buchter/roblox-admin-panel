@@ -31,6 +31,8 @@ function setProfile(user) {
     document.querySelector('#profile-menu-name').textContent = name;
     document.querySelector('#profile-menu-role').textContent = user?.role || 'Admin';
     document.querySelector('#profile-menu-avatar').textContent = initial;
+    const isOwner = String(user?.role || '').toUpperCase() === 'OWNER' || Number(user?.id) === 1;
+    document.querySelector('#admin-nav').hidden = !isOwner;
 }
 
     function setExperienceName(name) {
@@ -88,6 +90,51 @@ async function audit() {
     await loadAudit();
 }
 
+function accountStatus(account) {
+    if (account.temporary_password && account.temporary_password_expires_at) {
+        const remaining = Math.max(0, account.temporary_password_expires_at - Date.now());
+        const hours = Math.floor(remaining / 3600000);
+        const minutes = Math.floor((remaining % 3600000) / 60000);
+        return remaining ? `Temporary password · ${hours}h ${minutes}m left` : 'Expired and scheduled for deletion';
+    }
+    return 'Permanent password';
+}
+
+async function adminAccounts() {
+    title.textContent = 'Admins';
+    const response = await api('/api/admin/accounts');
+    app.innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Admin accounts</h2><small>Create accounts and inspect each account's security history.</small></div><button onclick="createAdmin()">Create admin</button></div><div class="admin-card-grid">${response.accounts.map(account => `<div class="admin-card"><button class="admin-card-open" onclick="adminAccountLogs(${account.id})"><span class="admin-card-avatar">${esc(account.username.slice(0, 1).toUpperCase())}</span><span class="admin-card-main"><b>${esc(account.username)}</b><small>${esc(account.display_name || account.username)} · ${esc(account.role)}</small><em>${esc(accountStatus(account))}</em></span><span class="admin-card-arrow">›</span></button><button class="admin-reset-button" onclick="resetAdminCredentials(${account.id}, event)">Reset credentials</button></div>`).join('') || '<div class="empty-state">No admin accounts found.</div>'}</div></div>`;
+}
+
+async function createAdmin() {
+    const answer = await modal({ eyebrow: 'Owner controls', title: 'Create admin account', message: 'The username is permanent. The first password expires in 24 hours unless the new admin changes it. Save the one-time reset key when it appears.', fields: [{ name: 'username', label: 'Username', required: true }, { name: 'password', label: 'Temporary password', type: 'password', required: true }, { name: 'role', label: 'Role', value: 'ADMIN', required: true }], confirmText: 'Create account' });
+    if (!answer) return;
+    try {
+        const result = await api('/api/admin/accounts', { method: 'POST', body: JSON.stringify(answer) });
+        await modal({ eyebrow: 'Save these credentials', title: 'Admin account created', message: `Username: ${result.account.username}\nTemporary password expires: ${fmt(result.account.temporaryPasswordExpiresAt)}\nOne-time reset key: ${result.oneTimeResetKey}`, fields: [], confirmText: 'Done' });
+        adminAccounts();
+    } catch (error) { toast(error.message); }
+}
+
+async function adminAccountLogs(accountId) {
+    const response = await api(`/api/admin/accounts/${accountId}/logs`);
+    const account = response.account;
+    const logText = response.logs.map(item => `${fmt(item.timestamp)}  ${item.action}  ${item.reason || ''}`).join('\n') || 'No account activity recorded.';
+    const temporaryStatus = account.temporary_password && account.temporary_password_expires_at ? `Temporary password expires: ${fmt(account.temporary_password_expires_at)}` : 'Temporary password: complete';
+    await modal({ eyebrow: 'Admin account details', title: account.username, message: `Display name: ${account.display_name || account.username}\nRole: ${account.role}\nCreated: ${fmt(account.created_at)}\n${temporaryStatus}\nPassword changed: ${fmt(account.password_changed_at)}\n\nAccount log:\n${logText}`, fields: [], confirmText: 'Close' });
+}
+
+async function resetAdminCredentials(accountId, event) {
+    event.stopPropagation();
+    const answer = await modal({ eyebrow: 'Owner controls', title: 'Reset credentials?', message: 'This immediately replaces the account password with a temporary password that expires in 24 hours. A new one-time reset key will be shown once.', confirmText: 'Generate reset', danger: true });
+    if (!answer) return;
+    try {
+        const result = await api(`/api/admin/accounts/${accountId}/reset`, { method: 'POST' });
+        await modal({ eyebrow: 'Save these credentials', title: 'Credentials reset', message: `Username: ${result.username}\nTemporary password: ${result.temporaryPassword}\nExpires: ${fmt(result.expiresAt)}\nOne-time reset key: ${result.oneTimeResetKey}`, fields: [], confirmText: 'Done' });
+        adminAccounts();
+    } catch (error) { toast(error.message); }
+}
+
 async function loadAudit() {
     const query = document.querySelector('#auditSearch')?.value || '';
     const rows = await api('/api/audit-logs?q=' + encodeURIComponent(query));
@@ -96,7 +143,9 @@ async function loadAudit() {
 
 function modal({ eyebrow = 'Confirm action', title: modalTitle, message = '', fields = [], confirmText = 'Confirm', danger = false }) {
     return new Promise(resolve => {
-        modalRoot.innerHTML = `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close" type="button" aria-label="Close">×</button><span class="modal-eyebrow">${esc(eyebrow)}</span><h2 id="modal-title">${esc(modalTitle)}</h2><p class="modal-message">${esc(message)}</p><form class="modal-form">${fields.map(field => `<label>${esc(field.label)}${field.type === 'textarea' ? `<textarea name="${esc(field.name)}" placeholder="${esc(field.placeholder || '')}" ${field.required ? 'required' : ''}>${esc(field.value || '')}</textarea>` : `<input name="${esc(field.name)}" type="${field.type || 'text'}" value="${esc(field.value || '')}" placeholder="${esc(field.placeholder || '')}" ${field.required ? 'required' : ''} ${field.min ? `min="${field.min}"` : ''} ${field.readOnly ? 'readonly' : ''}>`}</label>`).join('')}<div class="modal-actions"><button type="button" class="modal-cancel">Cancel</button><button type="submit" class="${danger ? 'danger-button' : ''}">${esc(confirmText)}</button></div></form></section></div>`;
+        modalRoot.innerHTML = `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close" type="button" aria-label="Close">×</button><span class="modal-eyebrow">${esc(eyebrow)}</span><h2 id="modal-title">${esc(modalTitle)}</h2><p class="modal-message">${esc(message)}</p><form class="modal-form">${fields.map(field => `<label>${esc(field.label)}${field.type === 'textarea' ? `<textarea name="${esc(field.name)}" placeholder="${esc(field.placeholder || '')}" ${field.required ? 'required' : ''}>${esc(field.value || '')}</textarea>` : field.type === 'select' ? `<select name="${esc(field.name)}" ${field.required ? 'required' : ''}><option value="ADMIN">Admin</option><option value="MODERATOR">Moderator</option><option value="VIEWER">Viewer</option></select>` : `<input name="${esc(field.name)}" type="${field.type || 'text'}" value="${esc(field.value || '')}" placeholder="${esc(field.placeholder || '')}" ${field.required ? 'required' : ''} ${field.min ? `min="${field.min}"` : ''} ${field.readOnly ? 'readonly' : ''}>`}</label>`).join('')}<div class="modal-actions"><button type="button" class="modal-cancel">Cancel</button><button type="submit" class="${danger ? 'danger-button' : ''}">${esc(confirmText)}</button></div></form></section></div>`;
+        const roleField = modalRoot.querySelector('select[name="role"]');
+        if (roleField) roleField.value = fields.find(field => field.name === 'role')?.value || 'ADMIN';
         const backdrop = modalRoot.querySelector('.modal-backdrop');
         let cleanup = () => {};
         const close = value => { cleanup(); modalRoot.innerHTML = ''; resolve(value); };
@@ -128,7 +177,7 @@ async function accountSettings() {
 }
 function toast(message) { const element = document.querySelector('#toast'); element.textContent = message; element.classList.add('show'); setTimeout(() => element.classList.remove('show'), 2200); }
 
-const views = { dashboard, active, players, servers, bans, audit };
+const views = { dashboard, active, players, servers, bans, audit, adminAccounts };
 document.querySelectorAll('nav button').forEach(button => { button.onclick = () => { currentView = button.dataset.view; document.querySelectorAll('nav button').forEach(item => item.classList.remove('active')); button.classList.add('active'); views[currentView](); }; });
 document.querySelector('#refresh-view').onclick = () => views[currentView]();
 async function logout() { await api('/api/auth/logout', { method: 'POST' }); location.href = 'login.html'; }

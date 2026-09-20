@@ -5,7 +5,9 @@ CREATE TABLE IF NOT EXISTS admins (
   username TEXT NOT NULL UNIQUE,
   display_name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'admin',
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  created_by INTEGER,
+  FOREIGN KEY(created_by) REFERENCES admins(id)
 );
 
 CREATE TABLE IF NOT EXISTS admin_credentials (
@@ -13,6 +15,12 @@ CREATE TABLE IF NOT EXISTS admin_credentials (
   password_hash TEXT NOT NULL,
   password_salt TEXT NOT NULL,
   updated_at INTEGER NOT NULL,
+  password_changed_at INTEGER,
+  temporary_password INTEGER NOT NULL DEFAULT 1,
+  temporary_password_expires_at INTEGER,
+  reset_key_hash TEXT,
+  reset_key_expires_at INTEGER,
+  reset_key_used_at INTEGER,
   FOREIGN KEY(admin_id) REFERENCES admins(id) ON DELETE CASCADE
 );
 

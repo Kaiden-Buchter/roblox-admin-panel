@@ -13,6 +13,7 @@ const ACTIVE_SESSION_TTL = 30 * 1000;
 
 const SERVER_TTL = 10 * 60 * 1000;
 const AUDIT_LOG_LIMIT = 500;
+const TEMP_PASSWORD_TTL = 24 * 60 * 60 * 1000;
 
 const id = () => crypto.randomUUID();
 
@@ -186,6 +187,29 @@ async function createPasswordCredential(password) {
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const hash = await passwordHash(password, salt);
     return { salt: b64url(salt), hash: b64url(hash) };
+}
+
+function randomSecret(bytes = 24) {
+    return b64url(crypto.getRandomValues(new Uint8Array(bytes)));
+}
+
+async function ownerSession(env, session) {
+    if (!session?.adminId) return false;
+    const admin = await env.DB.prepare("SELECT role FROM admins WHERE id=?").bind(session.adminId).first();
+    return String(admin?.role || session.role || '').toUpperCase() === 'OWNER' || Number(session.adminId) === 1;
+}
+
+async function cleanupTemporaryAdmins(env) {
+    await env.DB.prepare(`
+        DELETE FROM admins
+        WHERE id IN (
+            SELECT admin_id FROM admin_credentials
+            WHERE temporary_password=1
+            AND password_changed_at IS NULL
+            AND temporary_password_expires_at IS NOT NULL
+            AND temporary_password_expires_at <= ?
+        )
+    `).bind(now()).run();
 }
 
 async function checkPassword(password, credential) {
@@ -570,6 +594,7 @@ export default {
         }
 
         try {
+            await cleanupTemporaryAdmins(env);
 
             /* =================================================
                LOGIN
@@ -648,9 +673,11 @@ export default {
                 if (!credential) {
                     const generated = await createPasswordCredential(password);
                     await env.DB.prepare(`
-                        INSERT OR REPLACE INTO admin_credentials (admin_id, password_hash, password_salt, updated_at)
-                        VALUES (?, ?, ?, ?)
-                    `).bind(admin.id, generated.hash, generated.salt, now()).run();
+                        INSERT OR REPLACE INTO admin_credentials (
+                            admin_id, password_hash, password_salt, updated_at,
+                            password_changed_at, temporary_password, temporary_password_expires_at
+                        ) VALUES (?, ?, ?, ?, ?, 0, NULL)
+                    `).bind(admin.id, generated.hash, generated.salt, now(), now()).run();
                 }
 
                 const token =
@@ -786,6 +813,85 @@ export default {
                 );
             }
 
+            if (path === "/api/admin/accounts" && method === "GET") {
+                if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
+                const result = await env.DB.prepare(`
+                    SELECT a.id, a.username, a.display_name, a.role, a.created_at, a.created_by,
+                           c.password_changed_at, c.temporary_password, c.temporary_password_expires_at,
+                           c.reset_key_expires_at
+                    FROM admins a
+                    LEFT JOIN admin_credentials c ON c.admin_id=a.id
+                    ORDER BY a.created_at DESC
+                `).all();
+                return withCors(json({ accounts: result.results || [] }), env);
+            }
+
+            if (path === "/api/admin/accounts" && method === "POST") {
+                if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
+                const body = await req.json().catch(() => ({}));
+                const username = String(body.username || '').trim();
+                const password = String(body.password || '');
+                const role = String(body.role || 'ADMIN').toUpperCase();
+                if (!/^[A-Za-z0-9_.-]{3,32}$/.test(username)) return withCors(json({ error: "Username must be 3-32 characters using letters, numbers, dots, dashes, or underscores" }, 400), env);
+                if (password.length < 8) return withCors(json({ error: "Password must be at least 8 characters" }, 400), env);
+                if (!['ADMIN', 'MODERATOR', 'VIEWER'].includes(role)) return withCors(json({ error: "Invalid role" }, 400), env);
+                const generated = await createPasswordCredential(password);
+                const resetKey = randomSecret(24);
+                const resetCredential = await createPasswordCredential(resetKey);
+                const expiresAt = now() + TEMP_PASSWORD_TTL;
+                try {
+                    const result = await env.DB.prepare(`
+                        INSERT INTO admins (username, display_name, role, created_at, created_by)
+                        VALUES (?, ?, ?, ?, ?)
+                    `).bind(username, username, role, now(), session.adminId).run();
+                    const adminId = result.meta.last_row_id;
+                    await env.DB.prepare(`
+                        INSERT INTO admin_credentials (
+                            admin_id, password_hash, password_salt, updated_at,
+                            password_changed_at, temporary_password, temporary_password_expires_at,
+                            reset_key_hash, reset_key_expires_at
+                        ) VALUES (?, ?, ?, ?, NULL, 1, ?, ?, ?)
+                    `).bind(adminId, generated.hash, generated.salt, now(), expiresAt, resetCredential.hash, expiresAt).run();
+                    await audit(env, { adminId: session.adminId, adminUsername: session.username, action: 'ADMIN_CREATED', targetUserId: String(adminId), targetUsername: username, reason: `Created ${role} account`, success: true });
+                    return withCors(json({ ok: true, account: { id: adminId, username, displayName: username, role, createdAt: now(), temporaryPasswordExpiresAt: expiresAt }, oneTimeResetKey: resetKey }), env);
+                } catch (error) {
+                    return withCors(json({ error: error.message.includes('UNIQUE') ? 'Username is already in use' : 'Account creation failed' }, 400), env);
+                }
+            }
+
+            const accountMatch = path.match(/^\/api\/admin\/accounts\/(\d+)\/logs$/);
+            if (accountMatch && method === "GET") {
+                if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
+                const accountId = accountMatch[1];
+                const account = await env.DB.prepare(`
+                    SELECT a.id, a.username, a.display_name, a.role, a.created_at,
+                           c.password_changed_at, c.temporary_password,
+                           c.temporary_password_expires_at, c.reset_key_expires_at
+                    FROM admins a
+                    LEFT JOIN admin_credentials c ON c.admin_id=a.id
+                    WHERE a.id=?
+                `).bind(accountId).first();
+                if (!account) return withCors(json({ error: "Account not found" }, 404), env);
+                const logs = await env.DB.prepare(`SELECT * FROM audit_logs WHERE admin_id=? OR target_user_id=? ORDER BY id DESC LIMIT ?`).bind(accountId, accountId, AUDIT_LOG_LIMIT).all();
+                return withCors(json({ account, logs: logs.results || [] }), env);
+            }
+
+            const resetMatch = path.match(/^\/api\/admin\/accounts\/(\d+)\/reset$/);
+            if (resetMatch && method === "POST") {
+                if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
+                const accountId = resetMatch[1];
+                const account = await env.DB.prepare("SELECT id, username FROM admins WHERE id=?").bind(accountId).first();
+                if (!account) return withCors(json({ error: "Account not found" }, 404), env);
+                const temporaryPassword = randomSecret(18);
+                const resetKey = randomSecret(24);
+                const credential = await createPasswordCredential(temporaryPassword);
+                const resetCredential = await createPasswordCredential(resetKey);
+                const expiresAt = now() + TEMP_PASSWORD_TTL;
+                await env.DB.prepare(`UPDATE admin_credentials SET password_hash=?, password_salt=?, updated_at=?, password_changed_at=NULL, temporary_password=1, temporary_password_expires_at=?, reset_key_hash=?, reset_key_expires_at=?, reset_key_used_at=NULL WHERE admin_id=?`).bind(credential.hash, credential.salt, now(), expiresAt, resetCredential.hash, expiresAt, accountId).run();
+                await audit(env, { adminId: session.adminId, adminUsername: session.username, action: 'ADMIN_PASSWORD_RESET', targetUserId: accountId, targetUsername: account.username, reason: 'Owner-generated temporary credentials', success: true });
+                return withCors(json({ ok: true, username: account.username, temporaryPassword, oneTimeResetKey: resetKey, expiresAt }), env);
+            }
+
             if (path === "/api/admin/profile" && method === "POST") {
                 const body = await req.json().catch(() => ({}));
                 const currentPassword = String(body.currentPassword || "");
@@ -813,9 +919,10 @@ export default {
                         const generated = await createPasswordCredential(newPassword);
                         await env.DB.prepare(`
                             UPDATE admin_credentials
-                            SET password_hash=?, password_salt=?, updated_at=?
+                            SET password_hash=?, password_salt=?, updated_at=?, password_changed_at=?, temporary_password=0, temporary_password_expires_at=NULL
                             WHERE admin_id=?
-                        `).bind(generated.hash, generated.salt, now(), session.adminId).run();
+                        `).bind(generated.hash, generated.salt, now(), now(), session.adminId).run();
+                        await audit(env, { adminId: session.adminId, adminUsername: username, action: "ADMIN_PASSWORD_CHANGED", targetUserId: String(session.adminId), targetUsername: username, success: true });
                     }
 
                     const token = await sign({
