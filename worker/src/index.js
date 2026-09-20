@@ -880,14 +880,24 @@ export default {
             if (resetMatch && method === "POST") {
                 if (!await ownerSession(env, session)) return withCors(json({ error: "Owner access required" }, 403), env);
                 const accountId = resetMatch[1];
-                const account = await env.DB.prepare("SELECT id, username FROM admins WHERE id=?").bind(accountId).first();
+                const body = await req.json().catch(() => ({}));
+                const resetKey = String(body.resetKey || '');
+                const account = await env.DB.prepare(`
+                    SELECT a.id, a.username, c.reset_key_hash, c.reset_key_expires_at, c.reset_key_used_at
+                    FROM admins a
+                    LEFT JOIN admin_credentials c ON c.admin_id=a.id
+                    WHERE a.id=?
+                `).bind(accountId).first();
                 if (!account) return withCors(json({ error: "Account not found" }, 404), env);
+                if (!resetKey || account.reset_key_used_at || !account.reset_key_expires_at || account.reset_key_expires_at <= now() || !await checkPassword(resetKey, account)) {
+                    return withCors(json({ error: "A valid unused reset key is required" }, 400), env);
+                }
                 const temporaryPassword = randomSecret(18);
                 const resetKey = randomSecret(24);
                 const credential = await createPasswordCredential(temporaryPassword);
                 const resetCredential = await createPasswordCredential(resetKey);
                 const expiresAt = now() + TEMP_PASSWORD_TTL;
-                await env.DB.prepare(`UPDATE admin_credentials SET password_hash=?, password_salt=?, updated_at=?, password_changed_at=NULL, temporary_password=1, temporary_password_expires_at=?, reset_key_hash=?, reset_key_expires_at=?, reset_key_used_at=NULL WHERE admin_id=?`).bind(credential.hash, credential.salt, now(), expiresAt, resetCredential.hash, expiresAt, accountId).run();
+                await env.DB.prepare(`UPDATE admin_credentials SET password_hash=?, password_salt=?, updated_at=?, password_changed_at=NULL, temporary_password=1, temporary_password_expires_at=?, reset_key_hash=?, reset_key_expires_at=?, reset_key_used_at=? WHERE admin_id=?`).bind(credential.hash, credential.salt, now(), expiresAt, resetCredential.hash, expiresAt, now(), accountId).run();
                 await audit(env, { adminId: session.adminId, adminUsername: session.username, action: 'ADMIN_PASSWORD_RESET', targetUserId: accountId, targetUsername: account.username, reason: 'Owner-generated temporary credentials', success: true });
                 return withCors(json({ ok: true, username: account.username, temporaryPassword, oneTimeResetKey: resetKey, expiresAt }), env);
             }
