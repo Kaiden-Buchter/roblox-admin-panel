@@ -819,7 +819,6 @@ export default {
                         user: { id: session.adminId, username, displayName: displayName || username, role: session.role }
                     });
                     response.headers.set("Set-Cookie", `session=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=28800`);
-                    await audit(env, { adminId: session.adminId, adminUsername: username, action: "UPDATE_PROFILE", success: true });
                     return withCors(response, env);
                 } catch (error) {
                     return withCors(json({ error: error.message.includes("UNIQUE") ? "Username is already in use" : "Profile update failed" }, 400), env);
