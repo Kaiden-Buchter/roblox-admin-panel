@@ -168,18 +168,19 @@ async function loadAudit() {
     document.querySelector('#auditTable').innerHTML = `<div class="audit-scroll table-wrap"><table><thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Reason</th><th>Result</th></tr></thead><tbody>${rows.map(item => `<tr><td>${fmt(item.timestamp)}</td><td>${esc(item.admin_username || '—')}</td><td>${esc(item.action)}</td><td>${esc(item.target_username || item.target_user_id || '—')}</td><td>${esc(item.reason || '—')}</td><td><span class="pill ${item.success ? 'ok' : 'bad'}">${item.success ? 'Success' : 'Failed'}</span></td></tr>`).join('') || emptyRow(6, 'No audit records found.')}</tbody></table></div>`;
 }
 
-function modal({ eyebrow = 'Confirm action', title: modalTitle, message = '', messageHtml = '', fields = [], confirmText = 'Confirm', danger = false }) {
+function modal({ eyebrow = 'Confirm action', title: modalTitle, message = '', messageHtml = '', fields = [], confirmText = 'Confirm', danger = false, locked = false }) {
     return new Promise(resolve => {
         modalRoot.innerHTML = `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close" type="button" aria-label="Close">×</button><span class="modal-eyebrow">${esc(eyebrow)}</span><h2 id="modal-title">${esc(modalTitle)}</h2>${messageHtml ? `<div class="modal-message modal-rich-message">${messageHtml}</div>` : `<p class="modal-message">${esc(message)}</p>`}<form class="modal-form">${fields.map(field => `<label>${esc(field.label)}${field.type === 'textarea' ? `<textarea name="${esc(field.name)}" placeholder="${esc(field.placeholder || '')}" ${field.required ? 'required' : ''}>${esc(field.value || '')}</textarea>` : field.type === 'select' ? `<select name="${esc(field.name)}" ${field.required ? 'required' : ''}><option value="ADMIN">Admin</option><option value="MODERATOR">Moderator</option><option value="VIEWER">Viewer</option></select>` : `<input name="${esc(field.name)}" type="${field.type || 'text'}" value="${esc(field.value || '')}" placeholder="${esc(field.placeholder || '')}" ${field.required ? 'required' : ''} ${field.min ? `min="${field.min}"` : ''} ${field.readOnly ? 'readonly' : ''}>`}</label>`).join('')}<div class="modal-actions"><button type="submit" class="${danger ? 'danger-button' : ''}">${esc(confirmText)}</button></div></form></section></div>`;
         const roleField = modalRoot.querySelector('select[name="role"]');
         if (roleField) roleField.value = fields.find(field => field.name === 'role')?.value || 'ADMIN';
+        if (locked) modalRoot.querySelector('.modal-close')?.remove();
         const backdrop = modalRoot.querySelector('.modal-backdrop');
         let cleanup = () => {};
         const close = value => { cleanup(); modalRoot.innerHTML = ''; resolve(value); };
-        modalRoot.querySelector('.modal-close').onclick = () => close(null);
+        if (!locked) modalRoot.querySelector('.modal-close').onclick = () => close(null);
         modalRoot.querySelector('form').onsubmit = event => { event.preventDefault(); close(Object.fromEntries(new FormData(event.currentTarget).entries())); };
         modalRoot.querySelector('input, textarea')?.focus();
-        const escape = event => { if (event.key === 'Escape') close(null); };
+        const escape = event => { if (!locked && event.key === 'Escape') close(null); };
         cleanup = () => document.removeEventListener('keydown', escape);
         document.addEventListener('keydown', escape);
     });
@@ -203,6 +204,14 @@ async function accountSettings() {
 }
 function toast(message) { const element = document.querySelector('#toast'); element.textContent = message; element.classList.add('show'); setTimeout(() => element.classList.remove('show'), 2200); }
 
+async function forcePasswordChange() {
+    const answer = await modal({ eyebrow: 'Security required', title: 'Change your temporary password', message: 'You must create a permanent password before using the administration panel. This window cannot be dismissed.', fields: [{ name: 'currentPassword', label: 'Temporary password', type: 'password', required: true }, { name: 'newPassword', label: 'New password · 8+ characters', type: 'password', required: true }, { name: 'confirmPassword', label: 'Confirm new password', type: 'password', required: true }], confirmText: 'Save password', locked: true });
+    if (!answer) return forcePasswordChange();
+    if (answer.newPassword.length < 8) { toast('New password must be at least 8 characters'); return forcePasswordChange(); }
+    if (answer.newPassword !== answer.confirmPassword) { toast('New passwords do not match'); return forcePasswordChange(); }
+    try { await api('/api/admin/profile', { method: 'POST', body: JSON.stringify({ currentPassword: answer.currentPassword, newPassword: answer.newPassword }) }); toast('Password updated'); dashboard(); } catch (error) { toast(error.message); forcePasswordChange(); }
+}
+
 const views = { dashboard, active, players, servers, bans, audit, adminAccounts };
 document.querySelectorAll('nav button').forEach(button => { button.onclick = () => { currentView = button.dataset.view; document.querySelectorAll('nav button').forEach(item => item.classList.remove('active')); button.classList.add('active'); views[currentView](); }; });
 document.querySelector('#refresh-view').onclick = () => views[currentView]();
@@ -213,5 +222,5 @@ document.querySelector('#account-settings').onclick = () => { document.querySele
 document.querySelector('#profile-button').onclick = () => { const button = document.querySelector('#profile-button'); const menu = document.querySelector('#profile-menu'); menu.hidden = !menu.hidden; button.setAttribute('aria-expanded', String(!menu.hidden)); };
 document.addEventListener('click', event => { if (!event.target.closest('.profile-control')) { document.querySelector('#profile-menu').hidden = true; document.querySelector('#profile-button').setAttribute('aria-expanded', 'false'); } });
 setInterval(() => { document.querySelector('#clock').textContent = new Date().toLocaleTimeString(); }, 1000);
-api('/api/me').then(response => { setProfile(response.user); document.querySelector('nav button[data-view="dashboard"]')?.classList.add('active'); dashboard(); }).catch(showConnectionError);
+api('/api/me').then(response => { setProfile(response.user); document.querySelector('nav button[data-view="dashboard"]')?.classList.add('active'); if (response.user?.mustChangePassword) forcePasswordChange(); else dashboard(); }).catch(showConnectionError);
 setInterval(() => { if (title.textContent === 'Dashboard') dashboard(); if (title.textContent === 'Active Players') active(); }, 5000);

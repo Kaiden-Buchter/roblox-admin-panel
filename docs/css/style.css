@@ -160,14 +160,14 @@ tbody tr:hover { background: #ffffff05 }
 tbody tr:last-child td { border-bottom: 0 }
 .empty-state { padding: 34px 12px; color: var(--muted); text-align: center }
 .admin-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 8px }
-.admin-card { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 82px; padding: 8px; text-align: left; background: #15181ce8; border: 1px solid #292e35; border-radius: 7px; box-shadow: none }
+.admin-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 9px; width: 100%; min-height: 132px; padding: 12px; text-align: left; background: #15181ce8; border: 1px solid #292e35; border-radius: 7px; box-shadow: none }
 .admin-card:hover { border-color: #626a75; background: #20242a; transform: translateY(-2px) }
 .admin-card-disabled { opacity: .62; }
-.admin-card-open { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; padding: 5px; border: 0; background: transparent; text-align: left }
+.admin-card-open { display: flex; align-items: center; gap: 11px; width: 100%; min-width: 0; padding: 5px; border: 0; background: transparent; text-align: left }
 .admin-card-open:hover { background: transparent; transform: none }
 .admin-reset-button { flex: 0 0 auto; padding: 7px 8px; color: var(--muted); background: transparent; border-color: var(--line-soft); font-size: 10px }
 .admin-reset-button:hover { color: var(--text); transform: none }
-.admin-card-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+.admin-card-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 5px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
 .admin-delete-button { flex: 0 0 auto; padding: 7px 8px; color: #f08f96; background: transparent; border: 1px solid #5d353b; border-radius: 7px; font-size: 10px; }
 .admin-delete-button:hover { color: #ffffff; background: #402126; border-color: #a74c5a; transform: none }
 .admin-card-avatar { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; color: #111216; background: #ffffff; border-radius: 8px; font-weight: 900 }
