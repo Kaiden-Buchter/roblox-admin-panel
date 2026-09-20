@@ -171,8 +171,6 @@ tbody tr:last-child td { border-bottom: 0 }
 
 .toolbar input { flex: 1 }
 .search-group { display: flex; gap: 8px; min-width: min(430px, 100%) }
-select { min-width: 128px; padding: 10px 11px; color: var(--text); background: var(--surface-deep); border: 1px solid var(--line); border-radius: 7px; cursor: pointer }
-select:focus { outline: 2px solid var(--mint); outline-offset: 2px }
 input, textarea { width: 100%; padding: 11px 12px; color: var(--text); background: var(--surface-deep); border: 1px solid var(--line); border-radius: 7px; outline: none }
 input[readonly] { color: var(--muted); background: #131a1b; border-color: var(--line-soft); cursor: not-allowed }
 input:focus, textarea:focus { border-color: #ffffff; box-shadow: 0 0 0 3px #ffffff18 }
@@ -241,7 +239,6 @@ pre { max-width: 380px; margin: 0; color: #adc0b9; font: 11px/1.5 Consolas, mono
     .panel { padding: 20px 14px }
     .panel-head, .toolbar { align-items: stretch; flex-direction: column }
     .search-group { width: 100%; min-width: 0 }
-    .search-group select { flex: 1 }
     .detail-list { grid-template-columns: 1fr }
     .stat { min-height: 110px; padding: 16px }
     .stat strong { margin-top: 14px; font-size: 28px }

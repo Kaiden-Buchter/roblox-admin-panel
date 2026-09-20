@@ -84,20 +84,13 @@ async function bans() {
 
 async function audit() {
     title.textContent = 'Audit Logs';
-    app.innerHTML = `<div class="panel"><div class="toolbar"><div><h2>Audit trail</h2><small>Showing up to 500 records. Use the sort menu to organize actions.</small></div><div class="search-group"><input id="auditSearch" placeholder="Admin, action, username, ID"><button onclick="loadAudit()">Search</button><select id="auditSort" aria-label="Sort audit logs" onchange="loadAudit()"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="action-asc">Action A-Z</option><option value="action-desc">Action Z-A</option></select></div></div><div id="auditTable"></div></div>`;
+    app.innerHTML = `<div class="panel"><div class="toolbar"><div><h2>Audit trail</h2><small>Showing up to 500 records, newest first.</small></div><div class="search-group"><input id="auditSearch" placeholder="Admin, action, username, ID"><button onclick="loadAudit()">Search</button></div></div><div id="auditTable"></div></div>`;
     await loadAudit();
 }
 
 async function loadAudit() {
     const query = document.querySelector('#auditSearch')?.value || '';
-    const sort = document.querySelector('#auditSort')?.value || 'newest';
     const rows = await api('/api/audit-logs?q=' + encodeURIComponent(query));
-    rows.sort((left, right) => {
-        if (sort === 'oldest') return left.timestamp - right.timestamp;
-        if (sort === 'action-asc') return String(left.action || '').localeCompare(String(right.action || ''));
-        if (sort === 'action-desc') return String(right.action || '').localeCompare(String(left.action || ''));
-        return right.timestamp - left.timestamp;
-    });
     document.querySelector('#auditTable').innerHTML = `<div class="audit-scroll table-wrap"><table><thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Reason</th><th>Result</th></tr></thead><tbody>${rows.map(item => `<tr><td>${fmt(item.timestamp)}</td><td>${esc(item.admin_username || '—')}</td><td>${esc(item.action)}</td><td>${esc(item.target_username || item.target_user_id || '—')}</td><td>${esc(item.reason || '—')}</td><td><span class="pill ${item.success ? 'ok' : 'bad'}">${item.success ? 'Success' : 'Failed'}</span></td></tr>`).join('') || emptyRow(6, 'No audit records found.')}</tbody></table></div>`;
 }
 
