@@ -18,6 +18,11 @@ async function api(path, options = {}) {
     payload = {};
   }
 
+  if (response.status === 403 && payload.mustChangePassword && !window.location.pathname.endsWith('/change-password.html')) {
+    window.location.href = 'change-password.html';
+    throw new Error(payload.error || 'Password change required');
+  }
+
   if (response.status === 401 && !window.location.pathname.endsWith('/login.html')) {
     window.location.href = 'login.html';
     throw new Error(payload.error || 'Unauthorized');

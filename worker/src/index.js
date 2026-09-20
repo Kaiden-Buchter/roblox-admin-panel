@@ -626,6 +626,13 @@ export default {
                     : username === env.ADMIN_USERNAME && password === env.ADMIN_PASSWORD);
 
                 if (!valid) {
+                    if (admin && admin.active === 0) {
+                        return withCors(
+                            json({ error: "Account deactivated" }, 403),
+                            env
+                        );
+                    }
+
                     return withCors(
                         json(
                             {
@@ -690,6 +697,7 @@ export default {
                                 admin.display_name,
                             role:
                                 admin.role,
+                            mustChangePassword: credential?.temporary_password === 1,
                             exp:
                                 now() +
                                 8 *
@@ -710,7 +718,8 @@ export default {
                             displayName:
                                 admin.display_name,
                             role:
-                                admin.role
+                                admin.role,
+                            mustChangePassword: credential?.temporary_password === 1
                         }
                     });
 
@@ -790,6 +799,15 @@ export default {
                 );
             }
 
+            const sessionCredential = await env.DB.prepare(
+                "SELECT temporary_password FROM admin_credentials WHERE admin_id=?"
+            ).bind(session.adminId).first();
+            const mustChangePassword = sessionCredential?.temporary_password === 1 || session.mustChangePassword === true;
+
+            if (mustChangePassword && path !== "/api/me" && path !== "/api/admin/profile" && path !== "/api/auth/logout") {
+                return withCors(json({ error: "Password change required", mustChangePassword: true }, 403), env);
+            }
+
             /* =================================================
                CURRENT ADMIN
             ================================================= */
@@ -806,7 +824,8 @@ export default {
                             id: admin.id,
                             username: admin.username,
                             displayName: admin.display_name,
-                            role: admin.role
+                            role: admin.role,
+                            mustChangePassword: sessionCredential?.temporary_password === 1
                         } : session
                     }),
                     env
@@ -966,6 +985,10 @@ export default {
 
                 if (newPassword && newPassword.length < 8) {
                     return withCors(json({ error: "New password must be at least 8 characters" }, 400), env);
+                }
+
+                if (credential?.temporary_password === 1 && newPassword.length < 8) {
+                    return withCors(json({ error: "You must choose a new password with at least 8 characters" }, 400), env);
                 }
 
                 try {

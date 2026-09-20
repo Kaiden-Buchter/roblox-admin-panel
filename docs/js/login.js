@@ -9,14 +9,14 @@ document.addEventListener('DOMContentLoaded', () => {
     error.textContent = '';
 
     try {
-      await api('/api/auth/login', {
+      const result = await api('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({
           username: username.value.trim(),
           password: password.value
         })
       });
-      window.location.href = 'index.html';
+      window.location.href = result.user?.mustChangePassword ? 'change-password.html' : 'index.html';
     } catch (err) {
       error.textContent = err.message || 'Login failed';
     }
