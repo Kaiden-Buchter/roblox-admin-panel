@@ -73,10 +73,6 @@ function unb64url(s) {
     );
 }
 
-/* -------------------------------------------------------
-   HMAC SESSION TOKENS
-------------------------------------------------------- */
-
 async function hmac(secret, text) {
     const key = await crypto.subtle.importKey(
         "raw",
@@ -354,6 +350,21 @@ async function adminAction(
         ----------------------------- */
 
         if (type === "BAN") {
+
+            const existingBan = await env.DB.prepare(`
+                SELECT id
+                FROM bans
+                WHERE user_id=?
+                AND revoked_at IS NULL
+                AND (expires_at IS NULL OR expires_at > ?)
+                LIMIT 1
+            `).bind(userId, now()).first();
+
+            if (existingBan) {
+                return json({
+                    error: "Player is already banned"
+                }, 409);
+            }
 
             let duration = null;
 
@@ -838,7 +849,8 @@ export default {
                     players,
                     servers,
                     bans,
-                    recentAudit
+                    recentAudit,
+                    game
                 ] =
                     await Promise.all([
 
@@ -892,7 +904,18 @@ export default {
                                 ORDER BY id DESC
                                 LIMIT 10
                             `)
-                            .all()
+                            .all(),
+
+                        env.DB
+                            .prepare(`
+                                SELECT game_name
+                                FROM servers
+                                WHERE game_name IS NOT NULL
+                                AND game_name != ''
+                                ORDER BY last_heartbeat_at DESC
+                                LIMIT 1
+                            `)
+                            .first()
                     ]);
 
                 return withCors(
@@ -908,6 +931,8 @@ export default {
 
                         bans:
                             bans?.c || 0,
+
+                        gameName: game?.game_name || null,
 
                         recentAudit:
                             recentAudit.results || []
@@ -1368,16 +1393,18 @@ async function roblox(
         await env.DB.prepare(`
             INSERT INTO servers (
                 server_id,
+                game_name,
                 job_id,
                 player_count,
                 max_players,
                 last_heartbeat_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
 
             ON CONFLICT(server_id)
             DO UPDATE SET
+                game_name=excluded.game_name,
                 job_id=excluded.job_id,
                 player_count=excluded.player_count,
                 max_players=excluded.max_players,
@@ -1386,6 +1413,7 @@ async function roblox(
         `)
             .bind(
                 body.serverId,
+                body.gameName || null,
                 body.jobId || null,
                 playerCount,
                 Number(

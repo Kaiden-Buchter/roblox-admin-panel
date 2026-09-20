@@ -13,6 +13,14 @@ function emptyRow(columns, message) {
     return `<tr><td colspan="${columns}" class="empty-state">${message}</td></tr>`;
 }
 
+function showLoading(message = 'Loading workspace...') {
+    app.innerHTML = `<div class="page-loading"><span class="loading-orb"></span><div><b>${esc(message)}</b><small>Please wait a moment.</small></div></div>`;
+}
+
+function showConnectionError(error) {
+    app.innerHTML = `<div class="panel connection-error"><span class="error-mark">!</span><div><h2>We could not load this view</h2><p>${esc(error.message || 'The API is unavailable right now.')}</p><button onclick="location.reload()">Try again</button></div></div>`;
+}
+
 function setProfile(user) {
     currentUser = user;
     const name = user?.displayName || user?.username || 'Account';
@@ -24,9 +32,15 @@ function setProfile(user) {
     document.querySelector('#profile-menu-avatar').textContent = initial;
 }
 
+    function setExperienceName(name) {
+        const label = document.querySelector('#experience-name');
+        if (label && name) label.textContent = name.toUpperCase();
+    }
+
 async function dashboard() {
     title.textContent = 'Dashboard';
     const data = await api('/api/dashboard');
+        setExperienceName(data.gameName);
     app.innerHTML = `<div class="command-strip"><div><span class="live-dot"></span><b>Operations center</b><small>Live game telemetry</small></div><button class="subtle-button" onclick="dashboard()">Refresh data</button></div><div class="stats">${card('Active Players', data.activePlayers, 'stat-live')}${card('Saved Players', data.players)}${card('Live Servers', data.servers, 'stat-live')}${card('Active Bans', data.bans, 'stat-alert')}</div><div class="grid2 dashboard-grid"><div class="panel"><div class="panel-head"><div><h2>Recent audit activity</h2><small>Administrative actions across the game</small></div><button class="subtle-button" onclick="audit()">View all</button></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Result</th></tr></thead><tbody>${data.recentAudit.map(item => `<tr><td>${fmt(item.timestamp)}</td><td>${esc(item.admin_username || 'System')}</td><td><b>${esc(item.action)}</b></td><td>${esc(item.target_username || item.target_user_id || '—')}</td><td><span class="pill ${item.success ? 'ok' : 'bad'}">${item.success ? 'Success' : 'Failed'}</span></td></tr>`).join('') || emptyRow(5, 'No audit activity yet.')}</tbody></table></div></div><div class="panel pulse-panel"><div class="panel-head"><div><h2>System pulse</h2><small>Current service snapshot</small></div><span class="status-mark">Healthy</span></div><div class="pulse-list"><div><span>Player presence</span><b>${data.activePlayers || 0} online</b></div><div><span>Server fleet</span><b>${data.servers || 0} live</b></div><div><span>Enforcement</span><b>${data.bans || 0} active bans</b></div></div><button class="wide-button" onclick="servers()">Inspect live servers</button></div></div>`;
 }
 
@@ -103,7 +117,7 @@ function modal({ eyebrow = 'Confirm action', title: modalTitle, message = '', fi
 }
 
 async function kick(userId, username, serverId) { const answer = await modal({ eyebrow: 'Player control', title: `Kick ${username}?`, message: 'The player will be removed from their current server. This action will be added to the audit log.', confirmText: 'Queue kick', danger: true }); if (!answer) return; await api('/api/admin/kick', { method: 'POST', body: JSON.stringify({ userId, username, serverId, reason: 'Admin action' }) }); toast('Kick queued'); active(); }
-async function ban(userId, username) { const answer = await modal({ eyebrow: 'Enforcement', title: `Ban ${username}`, message: 'Choose a reason and duration. Leave duration blank for a permanent ban.', fields: [{ name: 'reason', label: 'Reason', value: 'Admin action', type: 'textarea', required: true }, { name: 'durationMinutes', label: 'Duration in minutes', value: '1440', type: 'number', min: '1', placeholder: 'Blank for permanent' }], confirmText: 'Create ban', danger: true }); if (!answer) return; await api('/api/admin/ban', { method: 'POST', body: JSON.stringify({ userId, username, reason: answer.reason, durationMinutes: answer.durationMinutes === '' ? null : Number(answer.durationMinutes) }) }); toast('Ban created'); bans(); }
+async function ban(userId, username) { const answer = await modal({ eyebrow: 'Enforcement', title: `Ban ${username}`, message: 'Choose a reason and duration. Leave duration blank for a permanent ban.', fields: [{ name: 'reason', label: 'Reason', value: 'Admin action', type: 'textarea', required: true }, { name: 'durationMinutes', label: 'Duration in minutes', value: '1440', type: 'number', min: '1', placeholder: 'Blank for permanent' }], confirmText: 'Create ban', danger: true }); if (!answer) return; try { await api('/api/admin/ban', { method: 'POST', body: JSON.stringify({ userId, username, reason: answer.reason, durationMinutes: answer.durationMinutes === '' ? null : Number(answer.durationMinutes) }) }); toast('Ban created'); bans(); } catch (error) { toast(error.message); } }
 async function unban(userId) { const answer = await modal({ eyebrow: 'Enforcement', title: 'Unban this player?', message: 'This will revoke the active ban and allow the player to return.', confirmText: 'Revoke ban' }); if (!answer) return; await api('/api/admin/unban', { method: 'POST', body: JSON.stringify({ userId }) }); toast('Player unbanned'); bans(); }
 async function resetStats(userId) { const answer = await modal({ eyebrow: 'Destructive action', title: 'Reset saved stats?', message: 'This queues a reset for every saved stat on this player. This cannot be undone.', confirmText: 'Reset stats', danger: true }); if (!answer) return; await api('/api/admin/stats/reset', { method: 'POST', body: JSON.stringify({ userId, payload: {} }) }); toast('Reset queued'); player(userId); }
 async function editStats(userId, stats) { const answer = await modal({ eyebrow: 'Player data', title: 'Edit saved stats', message: 'Enter valid JSON. The change will be queued for the Roblox server.', fields: [{ name: 'payload', label: 'Stats JSON', type: 'textarea', value: JSON.stringify(stats, null, 2), required: true }], confirmText: 'Queue update' }); if (!answer) return; let payload; try { payload = JSON.parse(answer.payload); } catch { toast('Invalid JSON'); return; } await api('/api/admin/stats/edit', { method: 'POST', body: JSON.stringify({ userId, payload }) }); toast('Stat edit queued'); player(userId); }
@@ -129,5 +143,5 @@ document.querySelector('#account-settings').onclick = () => { document.querySele
 document.querySelector('#profile-button').onclick = () => { const button = document.querySelector('#profile-button'); const menu = document.querySelector('#profile-menu'); menu.hidden = !menu.hidden; button.setAttribute('aria-expanded', String(!menu.hidden)); };
 document.addEventListener('click', event => { if (!event.target.closest('.profile-control')) { document.querySelector('#profile-menu').hidden = true; document.querySelector('#profile-button').setAttribute('aria-expanded', 'false'); } });
 setInterval(() => { document.querySelector('#clock').textContent = new Date().toLocaleTimeString(); }, 1000);
-api('/api/me').then(response => { setProfile(response.user); document.querySelector('nav button[data-view="dashboard"]')?.classList.add('active'); dashboard(); }).catch(() => {});
+api('/api/me').then(response => { setProfile(response.user); document.querySelector('nav button[data-view="dashboard"]')?.classList.add('active'); dashboard(); }).catch(showConnectionError);
 setInterval(() => { if (title.textContent === 'Dashboard') dashboard(); if (title.textContent === 'Active Players') active(); }, 5000);

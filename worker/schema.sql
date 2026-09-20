@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS players (
 
 CREATE TABLE IF NOT EXISTS servers (
   server_id TEXT PRIMARY KEY,
+  game_name TEXT,
   job_id TEXT,
   player_count INTEGER NOT NULL DEFAULT 0,
   max_players INTEGER NOT NULL DEFAULT 0,

@@ -55,6 +55,7 @@ while true do
     local list = Players:GetPlayers()
     request("POST", "/api/roblox/heartbeat", {
         serverId = serverId,
+        gameName = game.Name,
         jobId = game.JobId,
         playerCount = #list,
         maxPlayers = Players.MaxPlayers,
