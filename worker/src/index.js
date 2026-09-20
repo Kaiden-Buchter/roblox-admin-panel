@@ -644,6 +644,8 @@ export default {
                             adminId: admin.id,
                             username:
                                 admin.username,
+                            displayName:
+                                admin.display_name,
                             role:
                                 admin.role,
                             exp:
@@ -752,9 +754,18 @@ export default {
 
             if (path === "/api/me") {
 
+                const admin = await env.DB.prepare(
+                    "SELECT id, username, display_name, role FROM admins WHERE id=?"
+                ).bind(session.adminId).first();
+
                 return withCors(
                     json({
-                        user: session
+                        user: admin ? {
+                            id: admin.id,
+                            username: admin.username,
+                            displayName: admin.display_name,
+                            role: admin.role
+                        } : session
                     }),
                     env
                 );
@@ -795,6 +806,7 @@ export default {
                     const token = await sign({
                         adminId: session.adminId,
                         username,
+                        displayName: displayName || username,
                         role: session.role,
                         exp: now() + 8 * 60 * 60 * 1000
                     }, env.SESSION_SECRET);
