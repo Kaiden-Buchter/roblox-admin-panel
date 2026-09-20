@@ -24,7 +24,7 @@ body {
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
-    background: radial-gradient(circle at 80% -15%, #30343a 0, transparent 32%), radial-gradient(circle at 0% 100%, #181b20 0, transparent 28%), var(--canvas);
+    background: radial-gradient(circle at 82% -15%, #20242a 0, transparent 28%), var(--canvas);
     line-height: 1.45;
 }
 
@@ -33,29 +33,35 @@ body::before {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    opacity: .17;
-    background-image: linear-gradient(#ffffff08 1px, transparent 1px), linear-gradient(90deg, #ffffff08 1px, transparent 1px);
-    background-size: 40px 40px;
+    opacity: .06;
+    background-image: linear-gradient(#ffffff10 1px, transparent 1px), linear-gradient(90deg, #ffffff10 1px, transparent 1px);
+    background-size: 48px 48px;
 }
 
-.top-banner { position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 68px; padding: 12px clamp(18px, 4vw, 60px); background: #0b0d10d9; border-bottom: 1px solid var(--line); box-shadow: 0 8px 28px #0008; backdrop-filter: blur(22px) }
+* { scrollbar-width: thin; scrollbar-color: #4a5058 transparent }
+*::-webkit-scrollbar { width: 8px; height: 8px }
+*::-webkit-scrollbar-track { background: transparent }
+*::-webkit-scrollbar-thumb { background: #3b4149; border: 2px solid transparent; border-radius: 999px; background-clip: padding-box }
+*::-webkit-scrollbar-thumb:hover { background: #68707b; border-width: 1px }
+
+.top-banner { position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 64px; padding: 12px clamp(18px, 4vw, 60px); background: #0b0d10ed; border-bottom: 1px solid #24282e; box-shadow: 0 8px 24px #0007; backdrop-filter: blur(22px) }
 .top-banner-brand { color: var(--text); font-size: 16px; font-weight: 900; letter-spacing: 2.5px }
 .top-banner-brand span { color: #ffffff }
 .top-banner-brand small { margin-left: 10px; color: var(--faint); font-size: 9px; font-weight: 700; letter-spacing: 1.4px }
-.shell { display: flex; min-height: calc(100vh - 68px); position: relative }
+.shell { display: flex; min-height: calc(100vh - 64px); position: relative }
 
 aside {
     width: 246px;
     flex: 0 0 246px;
-    height: calc(100vh - 68px);
-    max-height: calc(100dvh - 68px);
+    height: calc(100vh - 64px);
+    max-height: calc(100dvh - 64px);
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 12px;
     padding: 28px 15px 18px;
-    background: #0d0f12d9;
-    border-right: 1px solid var(--line);
+    background: #0d0f12e8;
+    border-right: 1px solid #24282e;
     backdrop-filter: blur(18px);
     position: sticky;
     top: 0;
@@ -66,11 +72,11 @@ aside {
 
 .brand { padding: 0 13px; color: var(--text); font-size: 20px; font-weight: 900; letter-spacing: 3px }
 .brand span { color: var(--mint) }
-nav { display: grid; gap: 7px }
-nav button { width: 100%; min-height: 42px; text-align: left; color: var(--muted); background: transparent; border: 1px solid transparent; padding: 11px 13px; font-size: 13px }
+nav { display: grid; gap: 3px }
+nav button { width: 100%; min-height: 40px; text-align: left; color: var(--muted); background: transparent; border: 1px solid transparent; padding: 10px 13px; font-size: 13px }
 nav button:hover, nav button:focus-visible { color: var(--text); background: var(--surface-soft); border-color: var(--line); transform: translateX(2px) }
-nav button.active { position: relative; color: var(--text); background: #272b31; border-color: #565c65; box-shadow: inset 0 0 20px #ffffff0a }
-nav button.active::before { content: ""; position: absolute; left: -1px; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: #ffffff; box-shadow: 0 0 12px #ffffffaa }
+nav button.active { position: relative; color: var(--text); background: #22262b; border-color: #444a52; box-shadow: inset 0 0 14px #ffffff06 }
+nav button.active::before { content: ""; position: absolute; left: -1px; top: 8px; bottom: 8px; width: 2px; border-radius: 0 2px 2px 0; background: #ffffff }
 .ghost {
     position: sticky;
     bottom: 0;
@@ -88,8 +94,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 button:active { transform: translateY(0); }
 ::selection { color: #111216; background: #ffffff; }
 
-main { width: 100%; min-width: 0; max-width: 1540px; flex: 1; margin: 0 auto; padding: 22px clamp(18px, 2.2vw, 34px) 60px }
-header { position: sticky; top: 68px; z-index: 8; display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: -22px 0 24px; padding: 22px 0 18px; background: #08090bf2; border-bottom: 1px solid var(--line-soft); backdrop-filter: blur(18px) }
+main { width: 100%; min-width: 0; max-width: 1540px; flex: 1; margin: 0 auto; padding: 18px clamp(18px, 2.2vw, 34px) 52px }
+header { position: sticky; top: 64px; z-index: 8; display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: -18px 0 22px; padding: 18px 0 16px; background: #08090bf5; border-bottom: 1px solid #24282e; backdrop-filter: blur(18px) }
+.refresh-button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 50%; color: var(--text); background: #1b1e23; border-color: #3a4048; font-size: 22px; line-height: 1 }
+.refresh-button:hover { color: #ffffff; background: #30343a; transform: rotate(25deg) }
 .eyebrow { margin: 0 0 8px; color: var(--mint); font-size: 10px; font-weight: 800; letter-spacing: 2.5px }
 h1 { margin: 0; color: var(--text); font-size: clamp(28px, 3vw, 40px); letter-spacing: -.7px }
 h2 { margin: 0 0 6px; color: var(--text); font-size: 16px; letter-spacing: .2px }
@@ -115,7 +123,7 @@ h2 { margin: 0 0 6px; color: var(--text); font-size: 16px; letter-spacing: .2px 
 .subtle-button { padding: 7px 10px; color: var(--muted); font-size: 12px }
 
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin-bottom: 18px }
-.stat, .panel, .login-card { background: linear-gradient(145deg, #1c1f24cc, #111317dd); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 20px 55px #0008, inset 0 1px #ffffff10; backdrop-filter: blur(18px) }
+.stat, .panel, .login-card { background: linear-gradient(145deg, #181b20e8, #111317f2); border: 1px solid #292e35; border-radius: 9px; box-shadow: 0 14px 34px #0006, inset 0 1px #ffffff08; backdrop-filter: blur(18px) }
 .stat { position: relative; min-height: 126px; overflow: hidden; padding: 21px }
 .stat::after { content: ""; position: absolute; right: -20px; bottom: -25px; width: 82px; height: 82px; border: 1px solid #ffffff24; border-radius: 50% }
 .stat span { display: block; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase }
@@ -126,14 +134,14 @@ h2 { margin: 0 0 6px; color: var(--text); font-size: 16px; letter-spacing: .2px 
 .stat-alert strong { color: #d9dce0 }
 .stat-alert i { background: #b9bdc3; box-shadow: 0 0 0 5px #b9bdc318, 0 0 14px #b9bdc388 }
 
-.panel { position: relative; overflow: hidden; margin-bottom: 18px; padding: 24px; transition: border-color .18s ease, box-shadow .18s ease }
-.panel:hover { border-color: #3b4d4d; box-shadow: 0 22px 60px #0006, inset 0 1px #ffffff0a }
-.panel::before { content: ""; position: absolute; top: 0; left: 22px; width: 44px; height: 2px; background: #ffffff; box-shadow: 0 0 18px #ffffff77 }
-.panel-head, .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; margin-bottom: 7px; padding-bottom: 15px; border-bottom: 1px solid var(--line-soft) }
+.panel { position: relative; overflow: hidden; margin-bottom: 16px; padding: 22px; transition: border-color .18s ease, box-shadow .18s ease }
+.panel:hover { border-color: #3a4048; box-shadow: 0 18px 42px #0007, inset 0 1px #ffffff08 }
+.panel::before { content: ""; position: absolute; top: 0; left: 22px; width: 34px; height: 1px; background: #ffffffaa }
+.panel-head, .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; margin-bottom: 7px; padding-bottom: 13px; border-bottom: 1px solid #252a31 }
 .panel-head small, .toolbar small { margin: 0; color: var(--faint) }
 .dashboard-grid { align-items: stretch }
 .dashboard-grid .panel { margin-bottom: 0 }
-.pulse-panel { background: linear-gradient(150deg, #24282e, #15181c 70%); border-color: #515862 }
+.pulse-panel { background: linear-gradient(150deg, #20242a, #15181c 70%); border-color: #3b4149 }
 .status-mark { padding: 5px 9px; color: var(--mint); background: var(--mint-deep); border-radius: 999px; font-size: 11px; font-weight: 800 }
 .pulse-list { display: grid; gap: 0; margin: 19px 0 }
 .pulse-list div { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line-soft) }

@@ -2,6 +2,7 @@ const app = document.querySelector('#app');
 const title = document.querySelector('#title');
 const modalRoot = document.querySelector('#modal-root');
 let currentUser = null;
+let currentView = 'dashboard';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const fmt = timestamp => timestamp ? new Date(timestamp).toLocaleString() : '—';
 
@@ -41,7 +42,7 @@ async function dashboard() {
     title.textContent = 'Dashboard';
     const data = await api('/api/dashboard');
         setExperienceName(data.gameName);
-    app.innerHTML = `<div class="command-strip"><div><span class="live-dot"></span><b>Operations center</b><small>Live game telemetry</small></div><button class="subtle-button" onclick="dashboard()">Refresh data</button></div><div class="stats">${card('Active Players', data.activePlayers, 'stat-live')}${card('Saved Players', data.players)}${card('Live Servers', data.servers, 'stat-live')}${card('Active Bans', data.bans, 'stat-alert')}</div><div class="grid2 dashboard-grid"><div class="panel"><div class="panel-head"><div><h2>Recent audit activity</h2><small>Administrative actions across the game</small></div><button class="subtle-button" onclick="audit()">View all</button></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Result</th></tr></thead><tbody>${data.recentAudit.map(item => `<tr><td>${fmt(item.timestamp)}</td><td>${esc(item.admin_username || 'System')}</td><td><b>${esc(item.action)}</b></td><td>${esc(item.target_username || item.target_user_id || '—')}</td><td><span class="pill ${item.success ? 'ok' : 'bad'}">${item.success ? 'Success' : 'Failed'}</span></td></tr>`).join('') || emptyRow(5, 'No audit activity yet.')}</tbody></table></div></div><div class="panel pulse-panel"><div class="panel-head"><div><h2>System pulse</h2><small>Current service snapshot</small></div><span class="status-mark">Healthy</span></div><div class="pulse-list"><div><span>Player presence</span><b>${data.activePlayers || 0} online</b></div><div><span>Server fleet</span><b>${data.servers || 0} live</b></div><div><span>Enforcement</span><b>${data.bans || 0} active bans</b></div></div><button class="wide-button" onclick="servers()">Inspect live servers</button></div></div>`;
+    app.innerHTML = `<div class="stats">${card('Active Players', data.activePlayers, 'stat-live')}${card('Saved Players', data.players)}${card('Live Servers', data.servers, 'stat-live')}${card('Active Bans', data.bans, 'stat-alert')}</div><div class="grid2 dashboard-grid"><div class="panel"><div class="panel-head"><div><h2>Recent audit activity</h2><small>Administrative actions across the game</small></div><button class="subtle-button" onclick="audit()">View all</button></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Result</th></tr></thead><tbody>${data.recentAudit.map(item => `<tr><td>${fmt(item.timestamp)}</td><td>${esc(item.admin_username || 'System')}</td><td><b>${esc(item.action)}</b></td><td>${esc(item.target_username || item.target_user_id || '—')}</td><td><span class="pill ${item.success ? 'ok' : 'bad'}">${item.success ? 'Success' : 'Failed'}</span></td></tr>`).join('') || emptyRow(5, 'No audit activity yet.')}</tbody></table></div></div><div class="panel pulse-panel"><div class="panel-head"><div><h2>System pulse</h2><small>Current service snapshot</small></div><span class="status-mark">Healthy</span></div><div class="pulse-list"><div><span>Player presence</span><b>${data.activePlayers || 0} online</b></div><div><span>Server fleet</span><b>${data.servers || 0} live</b></div><div><span>Enforcement</span><b>${data.bans || 0} active bans</b></div></div><button class="wide-button" onclick="servers()">Inspect live servers</button></div></div>`;
 }
 
 async function active() {
@@ -135,7 +136,8 @@ async function accountSettings() {
 function toast(message) { const element = document.querySelector('#toast'); element.textContent = message; element.classList.add('show'); setTimeout(() => element.classList.remove('show'), 2200); }
 
 const views = { dashboard, active, players, servers, bans, audit };
-document.querySelectorAll('nav button').forEach(button => { button.onclick = () => { document.querySelectorAll('nav button').forEach(item => item.classList.remove('active')); button.classList.add('active'); views[button.dataset.view](); }; });
+document.querySelectorAll('nav button').forEach(button => { button.onclick = () => { currentView = button.dataset.view; document.querySelectorAll('nav button').forEach(item => item.classList.remove('active')); button.classList.add('active'); views[currentView](); }; });
+document.querySelector('#refresh-view').onclick = () => views[currentView]();
 async function logout() { await api('/api/auth/logout', { method: 'POST' }); location.href = 'login.html'; }
 document.querySelector('#logout').onclick = logout;
 document.querySelector('#profile-logout').onclick = logout;
